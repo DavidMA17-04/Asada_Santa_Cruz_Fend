@@ -1,0 +1,246 @@
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useState } from 'react';
+import { obtenerCatalogo } from '../api.js';
+import { etiquetaDe } from './formato.js';
+
+function valorInicial(campo, valores) {
+  let v = valores[campo.nombre];
+  if (v === undefined || v === null) v = typeof campo.valor === 'function' ? campo.valor() : campo.valor;
+  if (v === undefined || v === null) return campo.tipo === 'checkbox' ? false : '';
+  if (campo.tipo === 'date' && typeof v === 'string') return v.slice(0, 10);
+  if (campo.tipo === 'datetime-local' && typeof v === 'string') return v.slice(0, 16);
+  return v;
+}
+
+function valoresIniciales(campos, valores) {
+  const inicio = {};
+  for (const campo of campos) {
+    if (campo.tipo === 'oculto') continue;
+    inicio[campo.nombre] = valorInicial(campo, valores);
+  }
+  return inicio;
+}
+
+function leerValor(campo, crudo) {
+  if (campo.tipo === 'checkbox') return Boolean(crudo);
+  if (crudo === '' || crudo === undefined || crudo === null) return undefined;
+  const v = typeof crudo === 'string' ? crudo.trim() : crudo;
+  if (v === '') return undefined;
+  if (campo.tipo === 'number') return Number(v);
+  if (campo.tipo === 'datetime-local') return `${String(v).replace('T', ' ')}:00`;
+  if (campo.catalogo && /^\d+$/.test(String(v))) return Number(v);
+  return v;
+}
+
+function CampoSelect({ campo, value, onChange, id }) {
+  const [opciones, setOpciones] = useState(() => {
+    if (!campo.opciones) return [];
+    return campo.opciones.map((op) => (typeof op === 'string' ? { valor: op, texto: op } : op));
+  });
+  const [cargando, setCargando] = useState(Boolean(campo.catalogo));
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!campo.catalogo) return undefined;
+    let vivo = true;
+    setCargando(true);
+    const catalogo = campo.catalogo;
+    obtenerCatalogo(catalogo.ruta)
+      .then((filas) => {
+        if (!vivo) return;
+        const lista = catalogo.filtro ? filas.filter(catalogo.filtro) : filas;
+        setOpciones(lista.map((fila) => ({
+          valor: fila[catalogo.valor],
+          texto: typeof catalogo.texto === 'function' ? catalogo.texto(fila) : fila[catalogo.texto],
+        })));
+      })
+      .catch((err) => { if (vivo) setError(err.message); })
+      .finally(() => { if (vivo) setCargando(false); });
+    return () => { vivo = false; };
+  }, [campo.catalogo?.ruta]);
+
+  useEffect(() => {
+    if (!campo.textoInicial || (value !== '' && value !== undefined && value !== null)) return;
+    const match = opciones.find((op) => op.texto === campo.textoInicial);
+    if (match) onChange(match.valor);
+  }, [campo.textoInicial, opciones, value, onChange]);
+
+  const placeholder = error
+    ? `No se pudo cargar: ${error}`
+    : cargando
+      ? 'Cargando…'
+      : campo.requerido ? 'Seleccione…' : '(Todos)';
+
+  const actual = value === undefined || value === null ? '' : String(value);
+
+  return (
+    <select
+      id={id}
+      name={campo.nombre}
+      required={campo.requerido}
+      disabled={cargando}
+      value={actual}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">{placeholder}</option>
+      {opciones.map((op) => (
+        <option key={String(op.valor)} value={op.valor}>{op.texto}</option>
+      ))}
+    </select>
+  );
+}
+
+function Control({ campo, value, onChange, id }) {
+  if (campo.tipo === 'textarea') {
+    return (
+      <textarea
+        id={id}
+        name={campo.nombre}
+        required={campo.requerido}
+        maxLength={campo.max}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
+  if (campo.tipo === 'checkbox') {
+    return (
+      <input
+        id={id}
+        name={campo.nombre}
+        type="checkbox"
+        checked={Boolean(value)}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    );
+  }
+  if (campo.opciones || campo.catalogo) {
+    return <CampoSelect campo={campo} value={value} onChange={onChange} id={id} />;
+  }
+  return (
+    <input
+      id={id}
+      name={campo.nombre}
+      type={campo.tipo || 'text'}
+      required={campo.requerido}
+      value={value ?? ''}
+      min={campo.min}
+      max={campo.tipo === 'number' || campo.tipo === 'date' ? campo.max : undefined}
+      maxLength={campo.tipo === 'number' ? undefined : campo.max}
+      step={campo.paso ?? (campo.tipo === 'number' ? 'any' : undefined)}
+      placeholder={campo.marcador}
+      autoComplete={campo.autocomplete ?? (campo.tipo === 'password' ? 'new-password' : 'off')}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}
+
+export const Formulario = forwardRef(function Formulario({
+  campos,
+  valores = {},
+  textoEnviar = 'Guardar',
+  alEnviar,
+  alCancelar,
+  filtros = false,
+}, ref) {
+  const baseId = useId();
+  const visibles = useMemo(() => campos.filter((c) => c.tipo !== 'oculto'), [campos]);
+  const [estado, setEstado] = useState(() => valoresIniciales(campos, valores));
+  const [error, setError] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const leer = useCallback(() => {
+    const datos = {};
+    for (const campo of campos) {
+      if (campo.tipo === 'oculto' && valores[campo.nombre] !== undefined) {
+        datos[campo.nombre] = valores[campo.nombre];
+      }
+    }
+    const actuales = { ...estado };
+    for (const campo of visibles) {
+      if (campo.visibleSi && !campo.visibleSi(leerParcial(campos, actuales, valores))) continue;
+      const v = leerValor(campo, estado[campo.nombre]);
+      if (v !== undefined) datos[campo.nombre] = v;
+    }
+    return datos;
+  }, [campos, estado, valores, visibles]);
+
+  useImperativeHandle(ref, () => ({ leer }), [leer]);
+
+  const actualesParaVisibilidad = useMemo(
+    () => leerParcial(campos, estado, valores),
+    [campos, estado, valores],
+  );
+
+  async function onSubmit(evento) {
+    evento.preventDefault();
+    setError(null);
+    setEnviando(true);
+    try {
+      await alEnviar(leer());
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  const enviar = (
+    <button className="boton primario" type="submit" disabled={enviando}>
+      {enviando ? 'Procesando…' : textoEnviar}
+    </button>
+  );
+
+  return (
+    <form noValidate={false} onSubmit={onSubmit}>
+      <div className={filtros ? 'form-filtros' : 'form-rejilla'}>
+        {visibles.map((campo) => {
+          const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
+          const id = `${baseId}-${campo.nombre}`;
+          const etiqueta = (
+            <label htmlFor={id}>
+              {campo.etiqueta ?? etiquetaDe(campo.nombre)}
+              {campo.requerido ? <span className="requerido"> *</span> : null}
+            </label>
+          );
+          const control = (
+            <Control
+              campo={campo}
+              id={id}
+              value={estado[campo.nombre]}
+              onChange={(v) => setEstado((s) => ({ ...s, [campo.nombre]: v }))}
+            />
+          );
+          return (
+            <div
+              key={campo.nombre}
+              className={`${campo.tipo === 'checkbox' ? 'campo campo-check' : `campo ${campo.ancho || campo.tipo === 'textarea' ? 'ancho-completo' : ''}`}${oculto ? ' oculto' : ''}`}
+            >
+              {campo.tipo === 'checkbox' ? <>{control}{etiqueta}</> : <>{etiqueta}{control}{campo.ayuda ? <div className="ayuda">{campo.ayuda}</div> : null}</>}
+            </div>
+          );
+        })}
+        {filtros ? enviar : null}
+      </div>
+      {!filtros ? (
+        <div className="form-pie">
+          {alCancelar ? <button className="boton" type="button" onClick={alCancelar}>Cancelar</button> : null}
+          {enviar}
+        </div>
+      ) : null}
+      {error ? <div className="error-form" role="alert">{error}</div> : null}
+    </form>
+  );
+});
+
+function leerParcial(campos, estado, valores) {
+  const datos = {};
+  for (const campo of campos) {
+    if (campo.tipo === 'oculto' && valores[campo.nombre] !== undefined) {
+      datos[campo.nombre] = valores[campo.nombre];
+      continue;
+    }
+    const v = leerValor(campo, estado[campo.nombre]);
+    if (v !== undefined) datos[campo.nombre] = v;
+  }
+  return datos;
+}
