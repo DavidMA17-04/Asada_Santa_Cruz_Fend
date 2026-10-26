@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useState } from 'react';
 import { obtenerCatalogo } from '../api.js';
+import { Icono } from './Icono.jsx';
 import { etiquetaDe } from './formato.js';
 
 function valorInicial(campo, valores) {
@@ -89,7 +90,40 @@ function CampoSelect({ campo, value, onChange, id }) {
   );
 }
 
+function CampoClave({ campo, value, onChange, id }) {
+  const [visible, setVisible] = useState(false);
+  const texto = visible ? 'Ocultar contraseña' : 'Mostrar contraseña';
+
+  return (
+    <div className="campo-clave">
+      <input
+        id={id}
+        name={campo.nombre}
+        type={visible ? 'text' : 'password'}
+        required={campo.requerido}
+        value={value ?? ''}
+        maxLength={campo.max}
+        placeholder={campo.marcador}
+        autoComplete={campo.autocomplete ?? 'current-password'}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="campo-clave-boton"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={texto}
+        title={texto}
+      >
+        <Icono nombre={visible ? 'ojo-off' : 'ojo'} />
+      </button>
+    </div>
+  );
+}
+
 function Control({ campo, value, onChange, id }) {
+  if (campo.tipo === 'password' && campo.revelable) {
+    return <CampoClave campo={campo} value={value} onChange={onChange} id={id} />;
+  }
   if (campo.tipo === 'textarea') {
     return (
       <textarea

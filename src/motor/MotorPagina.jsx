@@ -248,44 +248,7 @@ function SeccionConsulta({ sec }) {
   );
 }
 
-function Metrica({ def, fila }) {
-  const valor = def.calcular ? def.calcular(fila) : fila[def.campo];
-  const vacio = valor === null || valor === undefined || valor === '';
-  const texto = vacio ? '—' : (def.formato ? def.formato(valor) : String(valor));
-
-  return (
-    <div className={`metrica ${def.clase || ''}`}>
-      {def.icono ? <span className="metrica-icono"><Icono nombre={def.icono} /></span> : null}
-      <div className="metrica-texto">
-        <span className="metrica-etiqueta">{def.etiqueta || etiquetaDe(def.campo || '')}</span>
-        <b>{texto}</b>
-        {def.ayuda ? <small>{def.ayuda}</small> : null}
-      </div>
-    </div>
-  );
-}
-
-function BarraResumen({ def, fila }) {
-  const total = Number(fila[def.total]) || 0;
-  const parte = Number(fila[def.parte]) || 0;
-  const porcentaje = total > 0 ? Math.min(100, Math.max(0, (parte / total) * 100)) : 0;
-  const texto = def.formato ? def.formato(porcentaje) : `${porcentaje.toFixed(1)} %`;
-
-  return (
-    <div className="barra-resumen">
-      <div className="barra-resumen-texto">
-        <span>{def.etiqueta}</span>
-        <b>{texto}</b>
-      </div>
-      <div className="barra-resumen-pista" role="img" aria-label={`${def.etiqueta}: ${texto}`}>
-        <div className={`barra-resumen-relleno ${def.clase || ''}`} style={{ width: `${porcentaje}%` }} />
-      </div>
-      {total === 0 ? <small className="barra-resumen-nota">No hay saldos pendientes registrados.</small> : null}
-    </div>
-  );
-}
-
-function SeccionTarjetas({ sec }) {
+function SeccionResumen({ sec }) {
   const [fila, setFila] = useState(null);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -311,7 +274,53 @@ function SeccionTarjetas({ sec }) {
   }, [sec.ruta]);
 
   const grupos = sec.grupos || [{ tarjetas: sec.tarjetas || [] }];
-  const corte = fila?.fecha_corte ? formatearCelda('fecha_corte', fila.fecha_corte).contenido : '—';
+  const filas = [];
+
+  if (fila) {
+    if (fila.fecha_corte) {
+      filas.push({
+        grupo: 'Corte',
+        indicador: 'Fecha de corte',
+        valor: formatearCelda('fecha_corte', fila.fecha_corte).contenido,
+        detalle: 'Información al día',
+      });
+    }
+
+    const agregarBarra = (barra, grupo) => {
+      const total = Number(fila[barra.total]) || 0;
+      const parte = Number(fila[barra.parte]) || 0;
+      const porcentaje = total > 0 ? Math.min(100, Math.max(0, (parte / total) * 100)) : 0;
+      filas.push({
+        grupo,
+        indicador: barra.etiqueta,
+        valor: `${porcentaje.toFixed(1)} %`,
+        detalle: 'Porcentaje del saldo que está vencido',
+      });
+    };
+
+    grupos.forEach((grupo) => {
+      (grupo.tarjetas || []).forEach((t) => {
+        const valor = t.calcular ? t.calcular(fila) : fila[t.campo];
+        const vacio = valor === null || valor === undefined || valor === '';
+        filas.push({
+          grupo: grupo.titulo || 'Resumen',
+          indicador: t.etiqueta || etiquetaDe(t.campo || ''),
+          valor: vacio ? '—' : (t.formato ? t.formato(valor) : String(valor)),
+          detalle: t.ayuda || '',
+        });
+      });
+      if (grupo.barra) agregarBarra(grupo.barra, grupo.titulo || 'Resumen');
+    });
+
+    if (sec.barra) agregarBarra(sec.barra, 'Resumen');
+  }
+
+  const columnas = [
+    { campo: 'grupo', etiqueta: 'Grupo' },
+    { campo: 'indicador', etiqueta: 'Indicador' },
+    { campo: 'valor', etiqueta: 'Valor' },
+    { campo: 'detalle', etiqueta: 'Detalle' },
+  ];
 
   return (
     <section className="tarjeta">
@@ -326,29 +335,9 @@ function SeccionTarjetas({ sec }) {
       {cargando ? <div className="cargando">Cargando…</div> : null}
       {!cargando && error ? <div className="error-form" role="alert">{error}</div> : null}
       {!cargando && !error && fila ? (
-        <>
-          <div className="resumen-corte">
-            <span>Fecha de corte</span>
-            <b>{corte}</b>
-          </div>
-          {grupos.map((grupo, i) => (
-            <div className="grupo-resumen" key={grupo.titulo || `grupo-${i}`}>
-              {grupo.titulo ? (
-                <div className="grupo-resumen-cabecera">
-                  <h3>{grupo.titulo}</h3>
-                  {grupo.descripcion ? <span>{grupo.descripcion}</span> : null}
-                </div>
-              ) : null}
-              <div className="tarjetas-resumen">
-                {(grupo.tarjetas || []).map((t, j) => (
-                  <Metrica key={t.campo || t.etiqueta || `metrica-${j}`} def={t} fila={fila} />
-                ))}
-              </div>
-              {grupo.barra ? <BarraResumen def={grupo.barra} fila={fila} /> : null}
-            </div>
-          ))}
-          {sec.barra ? <BarraResumen def={sec.barra} fila={fila} /> : null}
-        </>
+        <div className="resultado">
+          <Tabla filas={filas} columnas={columnas} nombreArchivo="resumen-cartera" />
+        </div>
       ) : null}
     </section>
   );
@@ -390,7 +379,7 @@ const TIPOS = {
   consulta: SeccionConsulta,
   formulario: SeccionFormulario,
   acciones: SeccionAcciones,
-  tarjetas: SeccionTarjetas,
+  resumen: SeccionResumen,
 };
 
 const pestanaActiva = new Map();

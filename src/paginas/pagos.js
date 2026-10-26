@@ -46,7 +46,7 @@ export default {
     {
       titulo: 'Resumen de cartera',
       pestana: 'Resumen',
-      tipo: 'tarjetas',
+      tipo: 'resumen',
       ruta: '/mora/resumen',
       descripcion: 'Saldo por cobrar, morosidad y recaudación del mes en curso.',
       grupos: [
@@ -79,8 +79,8 @@ export default {
           titulo: 'Recaudación del mes',
           descripcion: 'Pagos aplicados en el mes en curso',
           tarjetas: [
-            { campo: 'recaudado_mes', etiqueta: 'Recaudado del mes', formato: moneda, icono: 'pago', clase: 'verde' },
-            { campo: 'pagos_mes', etiqueta: 'Pagos del mes', icono: 'lista', clase: 'verde' },
+            { campo: 'recaudado_mes', etiqueta: 'Recaudado del mes', formato: moneda, icono: 'pago', clase: 'verde', ayuda: 'Pagos aplicados en el mes en curso.' },
+            { campo: 'pagos_mes', etiqueta: 'Pagos del mes', icono: 'lista', clase: 'verde', ayuda: 'Cantidad de pagos registrados.' },
           ],
         },
       ],
