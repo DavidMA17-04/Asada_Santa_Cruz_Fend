@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, obtener, sesion } from '../api.js';
 import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, Icono, Tabla } from '../ui/index.js';
-import { etiquetaDe } from '../ui/formato.js';
+import { etiquetaDe, formatearCelda } from '../ui/formato.js';
 
 const resolver = (valor, ...args) => (typeof valor === 'function' ? valor(...args) : valor);
 const permitidos = (lista = []) => lista.filter((x) => sesion.puede(x.permisos || []));
@@ -248,6 +248,112 @@ function SeccionConsulta({ sec }) {
   );
 }
 
+function Metrica({ def, fila }) {
+  const valor = def.calcular ? def.calcular(fila) : fila[def.campo];
+  const vacio = valor === null || valor === undefined || valor === '';
+  const texto = vacio ? '—' : (def.formato ? def.formato(valor) : String(valor));
+
+  return (
+    <div className={`metrica ${def.clase || ''}`}>
+      {def.icono ? <span className="metrica-icono"><Icono nombre={def.icono} /></span> : null}
+      <div className="metrica-texto">
+        <span className="metrica-etiqueta">{def.etiqueta || etiquetaDe(def.campo || '')}</span>
+        <b>{texto}</b>
+        {def.ayuda ? <small>{def.ayuda}</small> : null}
+      </div>
+    </div>
+  );
+}
+
+function BarraResumen({ def, fila }) {
+  const total = Number(fila[def.total]) || 0;
+  const parte = Number(fila[def.parte]) || 0;
+  const porcentaje = total > 0 ? Math.min(100, Math.max(0, (parte / total) * 100)) : 0;
+  const texto = def.formato ? def.formato(porcentaje) : `${porcentaje.toFixed(1)} %`;
+
+  return (
+    <div className="barra-resumen">
+      <div className="barra-resumen-texto">
+        <span>{def.etiqueta}</span>
+        <b>{texto}</b>
+      </div>
+      <div className="barra-resumen-pista" role="img" aria-label={`${def.etiqueta}: ${texto}`}>
+        <div className={`barra-resumen-relleno ${def.clase || ''}`} style={{ width: `${porcentaje}%` }} />
+      </div>
+      {total === 0 ? <small className="barra-resumen-nota">No hay saldos pendientes registrados.</small> : null}
+    </div>
+  );
+}
+
+function SeccionTarjetas({ sec }) {
+  const [fila, setFila] = useState(null);
+  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(true);
+
+  const cargar = async () => {
+    setCargando(true);
+    setError(null);
+    try {
+      const r = await obtener(sec.ruta);
+      setFila((r.datos || [])[0] || {});
+    } catch (err) {
+      setError(err.message);
+      setFila(null);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => {
+    cargar();
+    // Una sección se monta de nuevo al cambiar de pestaña.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sec.ruta]);
+
+  const grupos = sec.grupos || [{ tarjetas: sec.tarjetas || [] }];
+  const corte = fila?.fecha_corte ? formatearCelda('fecha_corte', fila.fecha_corte).contenido : '—';
+
+  return (
+    <section className="tarjeta">
+      <Encabezado
+        sec={sec}
+        herramientas={[
+          <button key="act" className="boton" type="button" title="Actualizar" onClick={cargar}>
+            <Icono nombre="recargar" /> Actualizar
+          </button>,
+        ]}
+      />
+      {cargando ? <div className="cargando">Cargando…</div> : null}
+      {!cargando && error ? <div className="error-form" role="alert">{error}</div> : null}
+      {!cargando && !error && fila ? (
+        <>
+          <div className="resumen-corte">
+            <span>Fecha de corte</span>
+            <b>{corte}</b>
+          </div>
+          {grupos.map((grupo, i) => (
+            <div className="grupo-resumen" key={grupo.titulo || `grupo-${i}`}>
+              {grupo.titulo ? (
+                <div className="grupo-resumen-cabecera">
+                  <h3>{grupo.titulo}</h3>
+                  {grupo.descripcion ? <span>{grupo.descripcion}</span> : null}
+                </div>
+              ) : null}
+              <div className="tarjetas-resumen">
+                {(grupo.tarjetas || []).map((t, j) => (
+                  <Metrica key={t.campo || t.etiqueta || `metrica-${j}`} def={t} fila={fila} />
+                ))}
+              </div>
+              {grupo.barra ? <BarraResumen def={grupo.barra} fila={fila} /> : null}
+            </div>
+          ))}
+          {sec.barra ? <BarraResumen def={sec.barra} fila={fila} /> : null}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 function SeccionFormulario({ sec }) {
   const [clave, setClave] = useState(0);
 
@@ -284,6 +390,7 @@ const TIPOS = {
   consulta: SeccionConsulta,
   formulario: SeccionFormulario,
   acciones: SeccionAcciones,
+  tarjetas: SeccionTarjetas,
 };
 
 const pestanaActiva = new Map();

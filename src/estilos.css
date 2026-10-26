@@ -297,6 +297,61 @@ pre.script {
 .resumen-salida div { background: var(--superficie-2); border: 1px solid var(--borde); border-radius: 6px; padding: 8px 12px; font-size: 13px; }
 .resumen-salida b { display: block; font-size: 16px; }
 
+/* Resumen de indicadores (secciones tipo "tarjetas"). */
+.resumen-corte {
+  display: flex; align-items: baseline; gap: 8px; margin-bottom: 18px;
+  font-size: 12.5px; color: var(--texto-suave);
+}
+.resumen-corte b { font-size: 13px; color: var(--texto); font-weight: 600; }
+
+.grupo-resumen + .grupo-resumen { margin-top: 24px; }
+.grupo-resumen-cabecera { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.grupo-resumen-cabecera h3 { font-size: 14px; letter-spacing: .01em; }
+.grupo-resumen-cabecera span { font-size: 12px; color: var(--texto-suave); }
+
+.tarjetas-resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.metrica {
+  display: flex; align-items: flex-start; gap: 12px; min-width: 0;
+  background: var(--superficie); border: 1px solid var(--borde); border-top: 3px solid var(--primario);
+  border-radius: 10px; padding: 14px; box-shadow: var(--sombra);
+}
+.metrica-icono {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--primario-suave); color: var(--primario);
+}
+.metrica-icono svg { width: 20px; height: 20px; }
+.metrica-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.metrica-etiqueta { font-size: 12.5px; color: var(--texto-suave); }
+.metrica b { font-size: 22px; line-height: 1.15; letter-spacing: -.01em; }
+.metrica small { font-size: 11.5px; color: var(--texto-suave); }
+.metrica.rojo { border-top-color: var(--peligro); }
+.metrica.rojo .metrica-icono { background: var(--peligro-suave); color: var(--peligro); }
+.metrica.ambar { border-top-color: var(--aviso); }
+.metrica.ambar .metrica-icono { background: var(--aviso-suave); color: var(--aviso); }
+.metrica.verde { border-top-color: var(--exito); }
+.metrica.verde .metrica-icono { background: var(--exito-suave); color: var(--exito); }
+.metrica.grande { padding: 16px; }
+.metrica.grande b { font-size: 27px; }
+
+.barra-resumen {
+  margin-top: 12px; background: var(--superficie); border: 1px solid var(--borde);
+  border-radius: 10px; padding: 14px 16px; box-shadow: var(--sombra);
+}
+.barra-resumen-texto { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; font-size: 13px; }
+.barra-resumen-texto b { font-size: 15px; }
+.barra-resumen-pista { height: 10px; background: var(--neutro-suave); border-radius: 999px; overflow: hidden; }
+.barra-resumen-relleno { height: 100%; width: 0; border-radius: 999px; background: var(--primario); transition: width .45s ease; }
+.barra-resumen-relleno.rojo { background: var(--peligro); }
+.barra-resumen-relleno.ambar { background: var(--aviso); }
+.barra-resumen-relleno.verde { background: var(--exito); }
+.barra-resumen-nota { display: block; margin-top: 8px; font-size: 11.5px; color: var(--texto-suave); }
+
+@media (max-width: 860px) {
+  .metrica b { font-size: 20px; }
+  .metrica.grande b { font-size: 24px; }
+}
+
 /* ---------- Avisos ---------- */
 #avisos { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 1000; }
 .aviso {
