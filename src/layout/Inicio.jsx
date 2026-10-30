@@ -27,7 +27,7 @@ const ACCIONES = [
 
 const INDICADORES = [
   {
-    clave: 'misMantenimientos', titulo: 'Mis mantenimientos', destino: 'mantenimiento',
+    clave: 'misMantenimientos', titulo: 'Mis mantenimientos', destino: 'campo',
     permisos: [P.EJECUTAR_MANTENIMIENTO], ruta: '/mantenimientos/mios',
     valor: (d) => (d || []).filter(enCurso).length,
     detalle: () => 'programados o en proceso', icono: 'herramienta', color: 'azul',

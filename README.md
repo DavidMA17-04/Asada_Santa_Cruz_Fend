@@ -26,7 +26,7 @@ cd backend && npm run dev
 cd frontend && npm run dev
 ```
 
-Abra **http://localhost:5173/**. Los usuarios iniciales son `admin` / `Asada#2026` y `dba` / `AsadaDBA#2026`.
+Abra **http://localhost:5173/**. Los usuarios iniciales son `admin` / `Asada#2026`, `dba` / `AsadaDBA#2026`, `fontanero` / `Fontanero#2026` y `junta` / `Junta#2026`.
 
 ## Qué ve cada rol
 

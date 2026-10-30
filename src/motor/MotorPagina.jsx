@@ -385,6 +385,8 @@ const TIPOS = {
 const pestanaActiva = new Map();
 
 export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
+  // requiereTodos: la página solo aparece si el usuario tiene todos esos permisos.
+  if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
   return pagina.secciones.filter((s) => puede(s.permisos ?? pagina.permisos ?? []));
 }
 
