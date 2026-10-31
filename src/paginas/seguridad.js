@@ -18,6 +18,14 @@ const CAMPOS_EMPLEADO = [
   { nombre: 'telefono', etiqueta: 'Teléfono', max: 20 },
 ];
 
+// Roles que crea 16_datos_iniciales.sql. La API no deja eliminarlos ni renombrarlos (CU-6.5 2a).
+const ROLES_BASE = ['Junta Directiva', 'Administrador del Sistema', 'Fontanero', 'Administrador de BD'];
+const esRolBase = (f) => ROLES_BASE.includes(f.nombre_rol);
+// Permisos que la API reconoce por su nombre; no se pueden renombrar.
+const PERMISOS_API = Object.values(P);
+// dbo.Rol.nombre_rol es varchar(25).
+const NOMBRE_ROL = { nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 25, ancho: true };
+
 const requerir = (campos, nombres) => campos.map((c) => (nombres.includes(c.nombre) ? { ...c, requerido: true } : c));
 
 // Mismas reglas que dbo.fn_ValidarComplejidadContrasena; la base las vuelve a validar.
@@ -146,43 +154,46 @@ export default {
       titulo: 'Roles',
       permisos: GESTIONAR,
       ruta: '/seguridad/roles',
-      descripcion: 'Los permisos se asignan al rol. Un cambio aplica de inmediato a todos los usuarios del rol.',
+      descripcion: 'Los permisos se asignan al rol. Un cambio aplica de inmediato a todos los usuarios del rol. Los roles base no se eliminan ni se renombran.',
       botones: [{
         texto: 'Nuevo rol', primario: true, ruta: '/seguridad/roles',
-        campos: [{ nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 50, ancho: true }],
+        campos: [NOMBRE_ROL],
         exito: () => 'Rol creado.',
       }],
       acciones: [
+        // CU-6.6: muestra todos los permisos por módulo y permite marcarlos o desmarcarlos.
         {
           texto: 'Permisos', metodo: 'GET',
           titulo: (f) => `Permisos del rol ${f.nombre_rol}`,
-          ruta: (f) => `/seguridad/roles/${f.id_rol}/permisos`,
-          ocultar: ['id_rol_permiso'],
-          botones: (rol) => [{
-            texto: 'Asignar permiso', primario: true, ruta: `/seguridad/roles/${rol.id_rol}/permisos`,
-            campos: [C.permiso({ requerido: true, ancho: true })],
-            textoEnviar: 'Asignar',
-            exito: () => 'Permiso asignado.',
-          }],
-          acciones: (rol) => [{
-            texto: 'Quitar', metodo: 'DELETE', peligro: true,
-            ruta: (f) => `/seguridad/roles/${rol.id_rol}/permisos/${f.id_permiso}`,
-            confirmar: (f) => `¿Quitar "${f.nombre_permiso}" al rol ${rol.nombre_rol}?`,
-            exito: () => 'Permiso retirado.',
-          }],
+          ruta: (f) => `/seguridad/roles/${f.id_rol}/matriz`,
+          ocultar: ['id_permiso'],
+          acciones: (rol) => [
+            {
+              texto: 'Asignar', primario: true, visible: (f) => !f.asignado,
+              ruta: `/seguridad/roles/${rol.id_rol}/permisos`,
+              cuerpo: (f) => ({ id_permiso: f.id_permiso }),
+              exito: (_r, f) => `Permiso "${f.nombre_permiso}" asignado.`,
+            },
+            {
+              texto: 'Quitar', metodo: 'DELETE', peligro: true, visible: (f) => f.asignado,
+              ruta: (f) => `/seguridad/roles/${rol.id_rol}/permisos/${f.id_permiso}`,
+              confirmar: (f) => `¿Quitar "${f.nombre_permiso}" al rol ${rol.nombre_rol}?`,
+              exito: () => 'Permiso retirado.',
+            },
+          ],
         },
         {
-          texto: 'Renombrar', metodo: 'PUT',
+          texto: 'Renombrar', metodo: 'PUT', visible: (f) => !esRolBase(f),
           titulo: (f) => `Renombrar el rol ${f.nombre_rol}`,
           ruta: (f) => `/seguridad/roles/${f.id_rol}`,
-          campos: [{ nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 50, ancho: true }],
+          campos: [NOMBRE_ROL],
           inicial: (f) => ({ nombre_rol: f.nombre_rol }),
           exito: () => 'Rol actualizado.',
         },
         {
-          texto: 'Eliminar', metodo: 'DELETE', peligro: true, visible: (f) => !f.usuarios_activos,
+          texto: 'Eliminar', metodo: 'DELETE', peligro: true, visible: (f) => !esRolBase(f) && !f.usuarios_activos,
           ruta: (f) => `/seguridad/roles/${f.id_rol}`,
-          confirmar: (f) => `¿Eliminar el rol ${f.nombre_rol}?`,
+          confirmar: (f) => `¿Eliminar el rol ${f.nombre_rol}? Solo se puede si no tiene usuarios ni permisos asignados.`,
           exito: () => 'Rol eliminado.',
         },
       ],
@@ -192,7 +203,7 @@ export default {
       pestana: 'Permisos',
       permisos: GESTIONAR,
       ruta: '/seguridad/permisos',
-      descripcion: 'Catálogo de permisos agrupados por módulo. La API reconoce los permisos por su nombre: renombrar uno existente le quita el acceso a quienes lo usan.',
+      descripcion: 'Catálogo de permisos agrupados por módulo. Los permisos que usa la API no se pueden renombrar; los nuevos se asignan a un rol desde la pestaña Roles.',
       ocultar: ['id_modulo'],
       botones: [
         {
@@ -206,14 +217,24 @@ export default {
           exito: () => 'Módulo creado.',
         },
       ],
-      acciones: [{
-        texto: 'Editar', metodo: 'PUT',
-        titulo: (f) => `Editar el permiso ${f.nombre_permiso}`,
-        ruta: (f) => `/seguridad/permisos/${f.id_permiso}`,
-        campos: [C.modulo({ requerido: true }), { nombre: 'nombre_permiso', etiqueta: 'Nombre del permiso', requerido: true, max: 50 }],
-        inicial: (f) => ({ id_modulo: f.id_modulo, nombre_permiso: f.nombre_permiso }),
-        exito: () => 'Permiso actualizado.',
-      }],
+      acciones: [
+        {
+          texto: 'Editar', metodo: 'PUT', visible: (f) => !PERMISOS_API.includes(f.nombre_permiso),
+          titulo: (f) => `Editar el permiso ${f.nombre_permiso}`,
+          ruta: (f) => `/seguridad/permisos/${f.id_permiso}`,
+          campos: [C.modulo({ requerido: true }), { nombre: 'nombre_permiso', etiqueta: 'Nombre del permiso', requerido: true, max: 50 }],
+          inicial: (f) => ({ id_modulo: f.id_modulo, nombre_permiso: f.nombre_permiso }),
+          exito: () => 'Permiso actualizado.',
+        },
+        {
+          texto: 'Renombrar módulo', metodo: 'PUT',
+          titulo: (f) => `Renombrar el módulo ${f.nombre_modulo}`,
+          ruta: (f) => `/seguridad/modulos/${f.id_modulo}`,
+          campos: [{ nombre: 'nombre_modulo', etiqueta: 'Nombre del módulo', requerido: true, max: 50, ancho: true }],
+          inicial: (f) => ({ nombre_modulo: f.nombre_modulo }),
+          exito: () => 'Módulo actualizado.',
+        },
+      ],
     },
     {
       titulo: 'Bitácora',
