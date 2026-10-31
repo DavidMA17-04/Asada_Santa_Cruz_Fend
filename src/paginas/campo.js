@@ -2,15 +2,15 @@
 // (ruta de lectura, mantenimientos asignados e incidencias).
 import { P } from '../permisos.js';
 import { C, ESTADOS, fechas } from './comunes.js';
+import {
+  COLUMNAS_RUTA_LECTURA,
+  accionRegistrarLectura,
+  ordenarRutaLectura,
+  seccionFormularioLectura,
+} from './lecturas.js';
 
 const enCurso = (f) => f.estado === 'Programado' || f.estado === 'En proceso';
 
-const CAMPOS_LECTURA = [
-  { nombre: 'lectura_actual', etiqueta: 'Lectura actual (m³)', tipo: 'number', requerido: true, min: 0 },
-  { nombre: 'fecha_lectura', etiqueta: 'Fecha de la lectura', tipo: 'date', valor: fechas.hoy },
-];
-
-const exitoLectura = (r) => `Lectura ${r.salida?.id_lectura} registrada. Consumo: ${r.salida?.consumo ?? 0} m³.`;
 const exitoIncidencia = (r) => `Incidencia ${r.salida?.id_incidencia} reportada. La prioridad la asigna el sistema.`;
 
 const camposIncidencia = (medidor) => [
@@ -75,18 +75,14 @@ export default {
       pestana: 'Ruta de lectura',
       permisos: [P.REGISTRAR_LECTURA],
       ruta: '/medidores/sin-lectura',
-      descripcion: 'Medidores que todavía no tienen lectura este mes. Al registrar la lectura el consumo se calcula solo y, si es anómalo, se genera una alerta.',
+      descripcion: 'Medidores que todavía no tienen lectura este mes, ordenados por ubicación y serie. Al registrar la lectura el consumo se calcula solo y, si es anómalo, se genera una alerta.',
+      mensajeVacio: 'Todos los medidores activos ya tienen lectura este mes.',
+      transformar: ordenarRutaLectura,
+      columnas: COLUMNAS_RUTA_LECTURA,
       acciones: [
+        accionRegistrarLectura({ texto: 'Leer', permisos: [P.REGISTRAR_LECTURA] }),
         {
-          texto: 'Leer', permisos: [P.REGISTRAR_LECTURA], ruta: '/lecturas',
-          titulo: (f) => `Lectura del medidor ${f.numero_serie}`,
-          campos: CAMPOS_LECTURA,
-          cuerpo: (f) => ({ id_medidor: f.id_medidor }),
-          textoEnviar: 'Registrar lectura',
-          exito: exitoLectura,
-        },
-        {
-          texto: 'Reportar problema', permisos: [P.REGISTRAR_INCIDENCIA], ruta: '/incidencias',
+          texto: 'Reportar', permisos: [P.REGISTRAR_INCIDENCIA], ruta: '/incidencias', suave: true,
           titulo: (f) => `Problema en el medidor ${f.numero_serie}`,
           campos: camposIncidencia(true),
           cuerpo: (f) => ({ id_medidor: f.id_medidor }),
@@ -95,16 +91,12 @@ export default {
         },
       ],
     },
-    {
-      titulo: 'Registrar lectura de cualquier medidor',
+    seccionFormularioLectura({
       pestana: 'Registrar lectura',
-      tipo: 'formulario',
+      titulo: 'Registrar lectura de cualquier medidor',
       permisos: [P.REGISTRAR_LECTURA],
-      ruta: '/lecturas',
-      campos: [C.medidor({ requerido: true, ancho: true }), ...CAMPOS_LECTURA],
-      textoEnviar: 'Registrar lectura',
-      exito: exitoLectura,
-    },
+      descripcion: 'Elija el medidor: verá la lectura anterior o inicial antes de guardar.',
+    }),
     {
       titulo: 'Reportar una incidencia',
       pestana: 'Reportar incidencia',

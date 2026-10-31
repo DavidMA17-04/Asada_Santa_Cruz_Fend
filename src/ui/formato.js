@@ -44,7 +44,7 @@ function colorEstado(valor) {
   if (/^(activ[oa]|pagada|aplicado|exitos[oa]|resuelta|finalizado|ok|baja)$/.test(v)) return 'verde';
   if (/^(pendiente|en proceso|programado|suspendida|media|medio|solicitada|abierta)$/.test(v)) return 'ambar';
   if (/^(vencida|cortada|dañado|anulado|fallid[oa]|alta|alto|cancelado|crítico|critico|error)$/.test(v)) return 'rojo';
-  if (/^(inactiva|sustituido|retirado)$/.test(v)) return '';
+  if (/^(inactiva|sustituido|retirado|sin factura)$/.test(v)) return '';
   return 'azul';
 }
 
@@ -60,6 +60,10 @@ export function formatearCelda(campo, valor) {
     return { contenido: createElement('span', { className: `insignia ${colorEstado(valor)}` }, valor), clase: '' };
   }
   if (typeof valor === 'string' && ES_FECHA_ISO.test(valor)) {
+    // Emisión / vencimiento / pago: solo fecha (sin hora).
+    if (/^fecha_(emision|vencimiento|pago|nacimiento|contratacion|instalacion)$/.test(campo)) {
+      return { contenido: FECHA.format(new Date(valor)), clase: 'fecha' };
+    }
     return { contenido: formatearFecha(valor), clase: 'fecha' };
   }
   if (typeof valor === 'number') {

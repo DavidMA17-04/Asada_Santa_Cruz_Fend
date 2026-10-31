@@ -8,12 +8,27 @@ function Dialogo({ modal, onCerrar }) {
 
   useEffect(() => {
     const el = ref.current;
-    try { if (!el.open) el.showModal(); } catch { /* ya visible */ }
-    const alClose = () => onCerrar(modal.id);
+    let vivo = true;
+    // showModal en el siguiente frame evita que un close residual del Strict Mode
+    // (cleanup del mount anterior) tumbe el modal recién abierto.
+    const id = requestAnimationFrame(() => {
+      if (!vivo || !el) return;
+      try { if (!el.open) el.showModal(); } catch { /* ya visible */ }
+    });
+    const alClose = () => {
+      if (vivo) onCerrar(modal.id);
+    };
+    // Evita cierre accidental por fondo o Esc; se sale con Cancelar / ×.
+    const alCancel = (e) => e.preventDefault();
     el.addEventListener('close', alClose);
+    el.addEventListener('cancel', alCancel);
     return () => {
+      vivo = false;
+      cancelAnimationFrame(id);
       el.removeEventListener('close', alClose);
-      if (el.open) el.close();
+      el.removeEventListener('cancel', alCancel);
+      // No llamar el.close() aquí: el evento close puede llegar al siguiente mount
+      // y disparar onCerrar, dejando el modal “sin hacer nada”.
     };
   }, [modal.id, onCerrar]);
 
