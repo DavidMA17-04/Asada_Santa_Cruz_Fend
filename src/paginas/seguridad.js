@@ -1,4 +1,5 @@
 // R6 · Seguridad: empleados, usuarios, roles, permisos y bitácora (CU-6.x).
+import { sesion } from '../api.js';
 import { P } from '../permisos.js';
 import { C, fechas } from './comunes.js';
 
@@ -19,10 +20,25 @@ const CAMPOS_EMPLEADO = [
 
 const requerir = (campos, nombres) => campos.map((c) => (nombres.includes(c.nombre) ? { ...c, requerido: true } : c));
 
+// Mismas reglas que dbo.fn_ValidarComplejidadContrasena; la base las vuelve a validar.
+function validarContrasena(valor = '') {
+  if (valor.length < 8 || !/[A-Z]/.test(valor) || !/[a-z]/.test(valor) || !/[0-9]/.test(valor) || !/[^A-Za-z0-9]/.test(valor)) {
+    return 'Debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo.';
+  }
+  return null;
+}
+
 const CONTRASENA = {
-  nombre: 'contrasena', etiqueta: 'Contraseña', tipo: 'password', requerido: true,
-  ayuda: 'Las reglas de complejidad las valida la base de datos.',
+  nombre: 'contrasena', etiqueta: 'Contraseña', tipo: 'password', requerido: true, max: 128,
+  ayuda: 'Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.',
+  validar: validarContrasena,
 };
+
+// La API no deja desactivar ni cambiar el rol de la cuenta propia; aquí se ocultan esos botones.
+// El driver puede devolver los id como texto, por eso se comparan como número.
+const usuarioActual = () => sesion.actual?.usuario || {};
+const esCuentaPropia = (f) => Number(f.id_usuario_sistema) === Number(usuarioActual().id_usuario_sistema);
+const esEmpleadoPropio = (f) => Number(f.id_empleado) === Number(usuarioActual().id_empleado);
 
 export default {
   id: 'seguridad',
@@ -35,7 +51,7 @@ export default {
       pestana: 'Usuarios',
       permisos: GESTIONAR,
       ruta: '/seguridad/usuarios',
-      descripcion: 'Cuentas de acceso. Tras varios intentos fallidos la cuenta se bloquea; "Reactivar" también la desbloquea.',
+      descripcion: 'Cuentas de acceso. Tras 3 intentos fallidos la cuenta se bloquea; "Reactivar" también la desbloquea. Su propia cuenta solo la puede desactivar o cambiar de rol otro administrador.',
       botones: [{
         texto: 'Nuevo usuario', primario: true, ruta: '/seguridad/usuarios',
         campos: [
@@ -54,7 +70,7 @@ export default {
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}/permisos`,
         },
         {
-          texto: 'Cambiar rol', metodo: 'PUT',
+          texto: 'Cambiar rol', metodo: 'PUT', visible: (f) => !esCuentaPropia(f),
           titulo: (f) => `Rol de ${f.nombre_usuario}`,
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}`,
           campos: [C.rol({ requerido: true, ancho: true })],
@@ -75,7 +91,7 @@ export default {
           exito: () => 'Usuario reactivado.',
         },
         {
-          texto: 'Desactivar', peligro: true, visible: (f) => f.activo,
+          texto: 'Desactivar', peligro: true, visible: (f) => f.activo && !esCuentaPropia(f),
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}/desactivar`,
           confirmar: (f) => `¿Desactivar la cuenta ${f.nombre_usuario}? Perderá el acceso de inmediato.`,
           exito: () => 'Usuario desactivado.',
@@ -111,7 +127,7 @@ export default {
           exito: () => 'Empleado actualizado.',
         },
         {
-          texto: 'Desactivar', metodo: 'PATCH', peligro: true, visible: (f) => f.activo,
+          texto: 'Desactivar', metodo: 'PATCH', peligro: true, visible: (f) => f.activo && !esEmpleadoPropio(f),
           ruta: (f) => `/seguridad/empleados/${f.id_empleado}/estado`,
           cuerpo: () => ({ activo: false }),
           confirmar: (f) => `¿Desactivar a ${f.nombre_completo}? Su usuario dejará de tener acceso.`,
