@@ -3,12 +3,25 @@ import { obtenerCatalogo } from '../api.js';
 import { Icono } from './Icono.jsx';
 import { etiquetaDe } from './formato.js';
 
+function valoresOpcion(opciones = []) {
+  return opciones.map((op) => (typeof op === 'string' ? op : op.valor));
+}
+
+function valorPorDefecto(campo) {
+  const def = typeof campo.valor === 'function' ? campo.valor() : campo.valor;
+  if (def === undefined || def === null) return campo.tipo === 'checkbox' ? false : '';
+  return def;
+}
+
 function valorInicial(campo, valores) {
   let v = valores[campo.nombre];
-  if (v === undefined || v === null) v = typeof campo.valor === 'function' ? campo.valor() : campo.valor;
+  if (v === undefined || v === null) v = valorPorDefecto(campo);
   if (v === undefined || v === null) return campo.tipo === 'checkbox' ? false : '';
   if (campo.tipo === 'date' && typeof v === 'string') return v.slice(0, 10);
   if (campo.tipo === 'datetime-local' && typeof v === 'string') return v.slice(0, 16);
+  if (campo.opciones?.length && !valoresOpcion(campo.opciones).map(String).includes(String(v))) {
+    return valorPorDefecto(campo);
+  }
   return v;
 }
 
@@ -24,8 +37,12 @@ function valoresIniciales(campos, valores) {
 function leerValor(campo, crudo) {
   if (campo.tipo === 'checkbox') return Boolean(crudo);
   if (crudo === '' || crudo === undefined || crudo === null) return undefined;
-  const v = typeof crudo === 'string' ? crudo.trim() : crudo;
+  let v = typeof crudo === 'string' ? crudo.trim() : crudo;
   if (v === '') return undefined;
+  if (campo.opciones?.length && !valoresOpcion(campo.opciones).map(String).includes(String(v))) {
+    v = valorPorDefecto(campo);
+    if (v === '' || v === undefined || v === null) return undefined;
+  }
   if (campo.tipo === 'number') return Number(v);
   if (campo.tipo === 'datetime-local') return `${String(v).replace('T', ' ')}:00`;
   if (campo.catalogo && /^\d+$/.test(String(v))) return Number(v);
@@ -33,10 +50,7 @@ function leerValor(campo, crudo) {
 }
 
 function CampoSelect({ campo, value, onChange, id }) {
-  const [opciones, setOpciones] = useState(() => {
-    if (!campo.opciones) return [];
-    return campo.opciones.map((op) => (typeof op === 'string' ? { valor: op, texto: op } : op));
-  });
+  const [opcionesCatalogo, setOpcionesCatalogo] = useState([]);
   const [cargando, setCargando] = useState(Boolean(campo.catalogo));
   const [error, setError] = useState(null);
 
@@ -49,7 +63,7 @@ function CampoSelect({ campo, value, onChange, id }) {
       .then((filas) => {
         if (!vivo) return;
         const lista = catalogo.filtro ? filas.filter(catalogo.filtro) : filas;
-        setOpciones(lista.map((fila) => ({
+        setOpcionesCatalogo(lista.map((fila) => ({
           valor: fila[catalogo.valor],
           texto: typeof catalogo.texto === 'function' ? catalogo.texto(fila) : fila[catalogo.texto],
         })));
@@ -58,6 +72,10 @@ function CampoSelect({ campo, value, onChange, id }) {
       .finally(() => { if (vivo) setCargando(false); });
     return () => { vivo = false; };
   }, [campo.catalogo?.ruta]);
+
+  const opciones = campo.opciones
+    ? campo.opciones.map((op) => (typeof op === 'string' ? { valor: op, texto: op } : op))
+    : opcionesCatalogo;
 
   useEffect(() => {
     if (!campo.textoInicial || (value !== '' && value !== undefined && value !== null)) return;
@@ -178,9 +196,19 @@ export const Formulario = forwardRef(function Formulario({
 }, ref) {
   const baseId = useId();
   const visibles = useMemo(() => campos.filter((c) => c.tipo !== 'oculto'), [campos]);
+  const firmaCampos = useMemo(
+    () => campos.map((c) => `${c.nombre}:${valoresOpcion(c.opciones).join(',')}`).join('|'),
+    [campos],
+  );
   const [estado, setEstado] = useState(() => valoresIniciales(campos, valores));
+  const [firmaAplicada, setFirmaAplicada] = useState(firmaCampos);
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
+
+  if (firmaCampos !== firmaAplicada) {
+    setFirmaAplicada(firmaCampos);
+    setEstado(valoresIniciales(campos, estado));
+  }
 
   const leer = useCallback(() => {
     const datos = {};
