@@ -80,6 +80,28 @@ export default {
       descripcion: 'Fugas y daños reportados que siguen abiertos.',
     },
     {
+      titulo: 'Atención de incidencias',
+      pestana: 'Incidencias DW',
+      permisos: DW,
+      ruta: '/dw/incidencias',
+      descripcion: 'Cantidad, estado y días de atención de incidencias según el Data Warehouse.',
+      filtros: [
+        { nombre: 'anio', etiqueta: 'Año', tipo: 'number', min: 2000, valor: anioActual },
+        { nombre: 'por', etiqueta: 'Agrupar por', requerido: true, valor: 'tipo', opciones: [
+          { valor: 'tipo', texto: 'Tipo' }, { valor: 'mes', texto: 'Mes' }, { valor: 'prioridad', texto: 'Prioridad' }] },
+        C.tipoIncidencia(),
+      ],
+      grafico: {
+        etiqueta: (f) => f.tipo_incidencia ?? (f.mes ? periodo(f) : f.prioridad),
+        series: [
+          { campo: 'incidencias', nombre: 'Total' },
+          { campo: 'abiertas', nombre: 'Abiertas' },
+          { campo: 'en_proceso', nombre: 'En proceso' },
+          { campo: 'resueltas', nombre: 'Resueltas' },
+        ],
+      },
+    },
+    {
       titulo: 'Mantenimientos pendientes',
       pestana: 'Mantenimientos',
       permisos: MANT,
