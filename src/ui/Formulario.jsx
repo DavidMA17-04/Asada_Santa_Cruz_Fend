@@ -19,6 +19,7 @@ function valorInicial(campo, valores) {
   if (v === undefined || v === null) return campo.tipo === 'checkbox' ? false : '';
   if (campo.tipo === 'date' && typeof v === 'string') return v.slice(0, 10);
   if (campo.tipo === 'datetime-local' && typeof v === 'string') return v.slice(0, 16);
+  if (campo.tipo === 'info') return '';
   if (campo.opciones?.length && !valoresOpcion(campo.opciones).map(String).includes(String(v))) {
     return valorPorDefecto(campo);
   }
@@ -28,13 +29,14 @@ function valorInicial(campo, valores) {
 function valoresIniciales(campos, valores) {
   const inicio = {};
   for (const campo of campos) {
-    if (campo.tipo === 'oculto') continue;
+    if (campo.tipo === 'oculto' || campo.tipo === 'info') continue;
     inicio[campo.nombre] = valorInicial(campo, valores);
   }
   return inicio;
 }
 
 function leerValor(campo, crudo) {
+  if (campo.tipo === 'info') return undefined;
   if (campo.tipo === 'checkbox') return Boolean(crudo);
   if (crudo === '' || crudo === undefined || crudo === null) return undefined;
   let v = typeof crudo === 'string' ? crudo.trim() : crudo;
@@ -49,7 +51,11 @@ function leerValor(campo, crudo) {
   return v;
 }
 
-function CampoSelect({ campo, value, onChange, id }) {
+function valorOpcionCatalogo(catalogo, fila) {
+  return typeof catalogo.valor === 'function' ? catalogo.valor(fila) : fila[catalogo.valor];
+}
+
+function CampoSelect({ campo, value, onChange, id, onFilas }) {
   const [opcionesCatalogo, setOpcionesCatalogo] = useState([]);
   const [cargando, setCargando] = useState(Boolean(campo.catalogo));
   const [error, setError] = useState(null);
@@ -62,16 +68,17 @@ function CampoSelect({ campo, value, onChange, id }) {
     obtenerCatalogo(catalogo.ruta)
       .then((filas) => {
         if (!vivo) return;
-        const lista = catalogo.filtro ? filas.filter(catalogo.filtro) : filas;
+        const lista = catalogo.filtro ? filas.filter((f) => catalogo.filtro(f)) : filas;
+        onFilas?.(campo.nombre, lista);
         setOpcionesCatalogo(lista.map((fila) => ({
-          valor: fila[catalogo.valor],
+          valor: valorOpcionCatalogo(catalogo, fila),
           texto: typeof catalogo.texto === 'function' ? catalogo.texto(fila) : fila[catalogo.texto],
         })));
       })
       .catch((err) => { if (vivo) setError(err.message); })
       .finally(() => { if (vivo) setCargando(false); });
     return () => { vivo = false; };
-  }, [campo.catalogo?.ruta]);
+  }, [campo.catalogo?.ruta, campo.nombre, onFilas]);
 
   const opciones = campo.opciones
     ? campo.opciones.map((op) => (typeof op === 'string' ? { valor: op, texto: op } : op))
@@ -138,7 +145,41 @@ function CampoClave({ campo, value, onChange, id }) {
   );
 }
 
-function Control({ campo, value, onChange, id }) {
+function CampoInfo({ campo, id, valores, filasCatalogo }) {
+  let texto = typeof campo.texto === 'string' ? campo.texto : '';
+  let vacio = !texto;
+  if (campo.desdeCampo) {
+    const clave = valores[campo.desdeCampo];
+    if (clave === undefined || clave === null || clave === '') {
+      texto = campo.textoVacio || 'Seleccione una opción para ver el detalle.';
+      vacio = true;
+    } else {
+      const filas = filasCatalogo[campo.desdeCampo] || [];
+      const fila = filas.find((f) => {
+        if (f.id_medidor !== undefined && String(f.id_medidor) === String(clave)) return true;
+        if (f.id_conexion !== undefined && String(f.id_conexion) === String(clave)) return true;
+        return false;
+      });
+      if (fila && campo.textoDesdeFila) {
+        texto = campo.textoDesdeFila(fila);
+        vacio = false;
+      } else {
+        texto = campo.textoVacio || 'No hay datos de referencia para esta selección.';
+        vacio = true;
+      }
+    }
+  }
+  return (
+    <div id={id} className={`campo-info${vacio ? ' campo-info-vacio' : ''}`} role="status">
+      {texto}
+    </div>
+  );
+}
+
+function Control({ campo, value, onChange, id, onFilas, valores, filasCatalogo }) {
+  if (campo.tipo === 'info') {
+    return <CampoInfo campo={campo} id={id} valores={valores} filasCatalogo={filasCatalogo} />;
+  }
   if (campo.tipo === 'password' && campo.revelable) {
     return <CampoClave campo={campo} value={value} onChange={onChange} id={id} />;
   }
@@ -166,7 +207,7 @@ function Control({ campo, value, onChange, id }) {
     );
   }
   if (campo.opciones || campo.catalogo) {
-    return <CampoSelect campo={campo} value={value} onChange={onChange} id={id} />;
+    return <CampoSelect campo={campo} value={value} onChange={onChange} id={id} onFilas={onFilas} />;
   }
   return (
     <input
@@ -204,11 +245,16 @@ export const Formulario = forwardRef(function Formulario({
   const [firmaAplicada, setFirmaAplicada] = useState(firmaCampos);
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [filasCatalogo, setFilasCatalogo] = useState({});
 
   if (firmaCampos !== firmaAplicada) {
     setFirmaAplicada(firmaCampos);
     setEstado(valoresIniciales(campos, estado));
   }
+
+  const onFilas = useCallback((nombre, filas) => {
+    setFilasCatalogo((prev) => (prev[nombre] === filas ? prev : { ...prev, [nombre]: filas }));
+  }, []);
 
   const leer = useCallback(() => {
     const datos = {};
@@ -219,6 +265,7 @@ export const Formulario = forwardRef(function Formulario({
     }
     const actuales = { ...estado };
     for (const campo of visibles) {
+      if (campo.tipo === 'info') continue;
       if (campo.visibleSi && !campo.visibleSi(leerParcial(campos, actuales, valores))) continue;
       const v = leerValor(campo, estado[campo.nombre]);
       if (v !== undefined) datos[campo.nombre] = v;
@@ -236,9 +283,26 @@ export const Formulario = forwardRef(function Formulario({
   async function onSubmit(evento) {
     evento.preventDefault();
     setError(null);
+    const datos = leer();
+    const contexto = { filasCatalogo };
+    for (const campo of visibles) {
+      if (campo.tipo === 'info') continue;
+      if (campo.visibleSi && !campo.visibleSi(datos)) continue;
+      if (campo.requerido && (datos[campo.nombre] === undefined || datos[campo.nombre] === '')) {
+        setError(`Complete el campo "${campo.etiqueta ?? etiquetaDe(campo.nombre)}".`);
+        return;
+      }
+      if (typeof campo.validar === 'function') {
+        const mensaje = campo.validar(datos[campo.nombre], datos, contexto);
+        if (mensaje) {
+          setError(mensaje);
+          return;
+        }
+      }
+    }
     setEnviando(true);
     try {
-      await alEnviar(leer());
+      await alEnviar(datos);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -253,7 +317,7 @@ export const Formulario = forwardRef(function Formulario({
   );
 
   return (
-    <form noValidate={false} onSubmit={onSubmit}>
+    <form noValidate onSubmit={onSubmit}>
       <div className={filtros ? 'form-filtros' : 'form-rejilla'}>
         {visibles.map((campo) => {
           const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
@@ -269,13 +333,16 @@ export const Formulario = forwardRef(function Formulario({
               campo={campo}
               id={id}
               value={estado[campo.nombre]}
+              valores={estado}
+              filasCatalogo={filasCatalogo}
+              onFilas={onFilas}
               onChange={(v) => setEstado((s) => ({ ...s, [campo.nombre]: v }))}
             />
           );
           return (
             <div
               key={campo.nombre}
-              className={`${campo.tipo === 'checkbox' ? 'campo campo-check' : `campo ${campo.ancho || campo.tipo === 'textarea' ? 'ancho-completo' : ''}`}${oculto ? ' oculto' : ''}`}
+              className={`${campo.tipo === 'checkbox' ? 'campo campo-check' : `campo ${campo.ancho || campo.tipo === 'textarea' || campo.tipo === 'info' ? 'ancho-completo' : ''}`}${oculto ? ' oculto' : ''}`}
             >
               {campo.tipo === 'checkbox' ? <>{control}{etiqueta}</> : <>{etiqueta}{control}{campo.ayuda ? <div className="ayuda">{campo.ayuda}</div> : null}</>}
             </div>
@@ -297,6 +364,7 @@ export const Formulario = forwardRef(function Formulario({
 function leerParcial(campos, estado, valores) {
   const datos = {};
   for (const campo of campos) {
+    if (campo.tipo === 'info') continue;
     if (campo.tipo === 'oculto' && valores[campo.nombre] !== undefined) {
       datos[campo.nombre] = valores[campo.nombre];
       continue;

@@ -1,9 +1,11 @@
 // Puente para que el motor llame avisos y modales sin pasar hooks.
-const registro = {
+// Se guarda en globalThis para que HMR de Vite no deje el stub vacío
+// (si no, los botones de acción parecen no hacer nada).
+const registro = globalThis.__asadaUiRegistro || (globalThis.__asadaUiRegistro = {
   avisar: () => {},
   abrirModal: () => ({ cerrar() {}, reemplazar() {} }),
   confirmar: async () => false,
-};
+});
 
 export function registrarUi(fns) {
   Object.assign(registro, fns);

@@ -49,67 +49,84 @@ function mostrarResultado(titulo, r, titulos) {
 }
 
 export async function ejecutarAccion(accion, fila, recargar) {
-  const metodo = accion.metodo || 'POST';
-  const ruta = resolver(accion.ruta, fila || {});
-  const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
-
-  if (metodo === 'GET') {
-    const modal = abrirModal(titulo, <div className="cargando">Cargando…</div>, { tamano: 'ancho' });
-    const cargar = async () => {
-      try {
-        const r = await obtener(ruta);
-        modal.reemplazar(
-          <ContenidoConsulta
-            def={{
-              ...accion,
-              nombreArchivo: titulo,
-              acciones: resolver(accion.acciones, fila),
-              botones: resolver(accion.botones, fila),
-            }}
-            r={r}
-            recargar={() => { cargar(); recargar?.(); }}
-          />,
-        );
-      } catch (err) {
-        modal.reemplazar(<div className="error-form" role="alert">{err.message}</div>);
-      }
-    };
-    cargar();
-    return;
-  }
-
-  const enviar = async (datos) => {
-    const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
-    avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
-    if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
-    recargar?.();
-  };
-
-  const campos = camposDe(accion.campos, fila);
-  if (campos.length) {
-    const modal = abrirModal(titulo, (
-      <Formulario
-        campos={campos}
-        valores={accion.inicial?.(fila || {}) || {}}
-        textoEnviar={accion.textoEnviar || accion.texto}
-        alCancelar={() => modal.cerrar()}
-        alEnviar={async (datos) => {
-          await enviar(datos);
-          modal.cerrar();
-        }}
-      />
-    ));
-    return;
-  }
-
-  if (accion.confirmar) {
-    const ok = await confirmar(resolver(accion.confirmar, fila || {}), { textoAceptar: accion.texto, peligro: accion.peligro });
-    if (!ok) return;
-  }
   try {
+    const metodo = accion.metodo || 'POST';
+    const ruta = resolver(accion.ruta, fila || {});
+    const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
+
+    if (metodo === 'GET') {
+      const esDetalle = !accion.acciones && !accion.columnas && !accion.botones && !accion.filtros;
+      const modal = abrirModal(titulo, <div className="cargando">Cargando…</div>, { tamano: esDetalle ? 'chico' : 'ancho' });
+      const cargar = async () => {
+        try {
+          const r = await obtener(ruta);
+          if (esDetalle) {
+            modal.reemplazar(<VistaResultado r={r} titulos={accion.titulosResultado} />);
+            return;
+          }
+          modal.reemplazar(
+            <ContenidoConsulta
+              def={{
+                ...accion,
+                nombreArchivo: titulo,
+                acciones: resolver(accion.acciones, fila),
+                botones: resolver(accion.botones, fila),
+              }}
+              r={r}
+              recargar={() => { cargar(); recargar?.(); }}
+            />,
+          );
+        } catch (err) {
+          modal.reemplazar(<div className="error-form" role="alert">{err.message}</div>);
+        }
+      };
+      cargar();
+      return;
+    }
+
+    const enviar = async (datos) => {
+      const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
+      avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
+      if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
+      recargar?.();
+    };
+
+    // Si la acción define campos, siempre abrir formulario (nunca enviar a ciegas).
+    if (accion.campos) {
+      let campos;
+      try {
+        campos = camposDe(accion.campos, fila);
+      } catch (err) {
+        avisar(err.message || 'No se pudo preparar el formulario.', 'error');
+        return;
+      }
+      if (!campos.length) {
+        avisar('No hay campos disponibles para esta acción con su permiso actual.', 'error');
+        return;
+      }
+      const modalRef = { actual: null };
+      modalRef.actual = abrirModal(titulo, (
+        <Formulario
+          campos={campos}
+          valores={accion.inicial?.(fila || {}) || {}}
+          textoEnviar={accion.textoEnviar || accion.texto}
+          alCancelar={() => modalRef.actual?.cerrar()}
+          alEnviar={async (datos) => {
+            await enviar(datos);
+            modalRef.actual?.cerrar();
+          }}
+        />
+      ));
+      return;
+    }
+
+    if (accion.confirmar) {
+      const ok = await confirmar(resolver(accion.confirmar, fila || {}), { textoAceptar: accion.texto, peligro: accion.peligro });
+      if (!ok) return;
+    }
     await enviar({});
   } catch (err) {
-    avisar(err.message, 'error');
+    avisar(err.message || 'No se pudo ejecutar la acción.', 'error');
   }
 }
 
@@ -134,6 +151,7 @@ function ContenidoConsulta({ def, r, recargar }) {
     alAccion: (a, fila) => ejecutarAccion(a, fila, recargar),
     ocultar: def.ocultar,
     columnas: def.columnas,
+    mensajeVacio: def.mensajeVacio,
     nombreArchivo: String(def.nombreArchivo || def.titulo || 'datos').toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi, '-'),
   };
   const botones = permitidos(def.botones || []);
@@ -182,12 +200,17 @@ function SeccionConsulta({ sec }) {
   const filtrosActuales = useRef({});
 
   const cargar = async (filtros = filtrosActuales.current) => {
+    const preparados = sec.prepararFiltros ? sec.prepararFiltros(filtros) : filtros;
     filtrosActuales.current = filtros;
     setCargando(true);
     setError(null);
     try {
-      const r = await obtener(sec.ruta, filtros);
-      setResultado(r);
+      const r = await obtener(sec.ruta, preparados);
+      if (sec.transformar && r?.datos) {
+        setResultado({ ...r, datos: sec.transformar(r.datos) });
+      } else {
+        setResultado(r);
+      }
     } catch (err) {
       setError(err.message);
       setResultado(null);
@@ -349,17 +372,19 @@ function SeccionFormulario({ sec }) {
   return (
     <section className="tarjeta">
       <Encabezado sec={sec} />
-      <Formulario
-        key={clave}
-        campos={camposDe(sec.campos)}
-        textoEnviar={sec.textoEnviar || 'Guardar'}
-        alEnviar={async (datos) => {
-          const r = await api(sec.metodo || 'POST', resolver(sec.ruta, datos), datos);
-          avisar(sec.exito ? sec.exito(r, datos) : 'Registro guardado.');
-          if (sec.mostrarResultado) mostrarResultado(sec.titulo, r, sec.titulosResultado);
-          if (sec.limpiar !== false) setClave((n) => n + 1);
-        }}
-      />
+      <div className="form-panel">
+        <Formulario
+          key={clave}
+          campos={camposDe(sec.campos)}
+          textoEnviar={sec.textoEnviar || 'Guardar'}
+          alEnviar={async (datos) => {
+            const r = await api(sec.metodo || 'POST', resolver(sec.ruta, datos), datos);
+            avisar(sec.exito ? sec.exito(r, datos) : 'Registro guardado.');
+            if (sec.mostrarResultado) mostrarResultado(sec.titulo, r, sec.titulosResultado);
+            if (sec.limpiar !== false) setClave((n) => n + 1);
+          }}
+        />
+      </div>
     </section>
   );
 }

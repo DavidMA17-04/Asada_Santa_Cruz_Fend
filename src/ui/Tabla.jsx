@@ -30,11 +30,19 @@ export function Tabla({
   columnas,
   porPagina = 25,
   nombreArchivo = 'datos',
+  mensajeVacio = 'No hay registros para mostrar.',
 }) {
   const cols = useMemo(() => (
     (columnas || Object.keys(filas[0] || {}).filter((c) => !ocultar.includes(c)))
       .map((c) => (typeof c === 'string' ? { campo: c, etiqueta: etiquetaDe(c) } : { etiqueta: etiquetaDe(c.campo), ...c }))
   ), [columnas, filas, ocultar]);
+
+  const claseDeCol = (col, fila) => (typeof col.clase === 'function' ? col.clase(fila) : col.clase);
+
+  const claseCelda = (col, fila) => {
+    const base = formatearCelda(col.campo, fila[col.campo]).clase;
+    return [base, claseDeCol(col, fila)].filter(Boolean).join(' ');
+  };
 
   const [termino, setTermino] = useState('');
   const [orden, setOrden] = useState(null);
@@ -61,7 +69,7 @@ export function Tabla({
   }, [filas, cols, termino, orden]);
 
   if (!filas.length) {
-    return <div className="vacio tabla-envoltura">No hay registros para mostrar.</div>;
+    return <div className="vacio tabla-envoltura">{mensajeVacio}</div>;
   }
 
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
@@ -102,26 +110,36 @@ export function Tabla({
           <thead>
             <tr>
               {cols.map((c) => (
-                <th key={c.campo} onClick={() => ordenar(c.campo)} title="Ordenar">{c.etiqueta}</th>
+                <th
+                  key={c.campo}
+                  className={typeof c.clase === 'string' ? c.clase : ''}
+                  onClick={() => ordenar(c.campo)}
+                  title="Ordenar"
+                >
+                  {c.etiqueta}
+                </th>
               ))}
-              {acciones.length ? <th /> : null}
+              {acciones.length ? <th className="acciones">Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
             {visibles.length ? visibles.map((fila, i) => (
               <tr key={i}>
                 {cols.map((c) => {
-                  const { contenido, clase } = formatearCelda(c.campo, fila[c.campo]);
-                  return <td key={c.campo} className={clase}>{contenido}</td>;
+                  const { contenido } = formatearCelda(c.campo, fila[c.campo]);
+                  return <td key={c.campo} className={claseCelda(c, fila)}>{contenido}</td>;
                 })}
                 {acciones.length ? (
                   <td className="acciones">
                     {acciones.filter((a) => !a.visible || a.visible(fila)).map((a) => (
                       <button
                         key={a.texto}
-                        className={`boton chico ${a.peligro ? 'peligro' : ''}`}
+                        className={`boton chico${a.primario ? ' primario' : ''}${a.peligro ? ' peligro' : ''}${a.suave ? ' suave' : ''}`}
                         type="button"
-                        onClick={() => alAccion(a, fila)}
+                        onClick={() => {
+                          if (!alAccion) return;
+                          Promise.resolve(alAccion(a, fila)).catch(() => {});
+                        }}
                       >
                         {a.texto}
                       </button>
