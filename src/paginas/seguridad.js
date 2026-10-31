@@ -4,6 +4,9 @@ import { C, fechas } from './comunes.js';
 
 const GESTIONAR = [P.GESTIONAR_SEGURIDAD];
 const BITACORA = [P.CONSULTAR_BITACORA];
+// Acciones que escriben los triggers y sp_RegistrarEventoBitacora.
+const ACCIONES_BITACORA = ['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FALLIDO', 'LOGOUT', 'CONSULTA', 'ALERTA', 'RESTORE', 'ETL', 'MANTENIMIENTO', 'PRUEBAS']
+  .map((a) => ({ valor: a, texto: a }));
 
 const CAMPOS_EMPLEADO = [
   { nombre: 'cedula', etiqueta: 'Cédula', max: 20 },
@@ -200,9 +203,15 @@ export default {
       titulo: 'Bitácora',
       permisos: BITACORA,
       ruta: '/seguridad/bitacora',
-      descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo.',
+      descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo. Es de solo lectura.',
+      mensajeVacio: 'No hay registros que cumplan los filtros.',
       filtros: [
-        { nombre: 'accion', etiqueta: 'Acción', marcador: 'INSERT, UPDATE, LOGIN…' },
+        // CU-6.7: filtro por usuario. La lista de usuarios solo la ve quien gestiona la seguridad.
+        {
+          nombre: 'id_usuario_sistema', etiqueta: 'Usuario', permisos: GESTIONAR,
+          catalogo: { ruta: '/seguridad/usuarios', valor: 'id_usuario_sistema', texto: 'nombre_usuario' },
+        },
+        { nombre: 'accion', etiqueta: 'Acción', opciones: ACCIONES_BITACORA },
         { nombre: 'tabla_afectada', etiqueta: 'Tabla' },
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date', valor: () => fechas.haceDias(7) },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date' },
