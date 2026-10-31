@@ -11,6 +11,7 @@ const ACENTOS = {
   calculo: 'cálculo', anulacion: 'anulación', duracion: 'duración', tamano: 'tamaño',
   restauracion: 'restauración', recuperacion: 'recuperación', proposito: 'propósito',
   incidencia: 'incidencia', bitacora: 'bitácora', maximo: 'máximo', minimo: 'mínimo',
+  atencion: 'atención',
   ubicacion: 'ubicación', numero: 'número', razon: 'razón', modificacion: 'modificación', solucion: 'solución',
 };
 
