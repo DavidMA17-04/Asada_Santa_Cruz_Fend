@@ -61,7 +61,11 @@ export function Tabla({
   }, [filas, cols, termino, orden]);
 
   if (!filas.length) {
-    return <div className="vacio tabla-envoltura">No hay registros para mostrar.</div>;
+    return (
+      <div className="vacio tabla-envoltura">
+        <span>No hay registros para mostrar en este momento.</span>
+      </div>
+    );
   }
 
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
@@ -76,13 +80,16 @@ export function Tabla({
   return (
     <div>
       <div className="tabla-barra">
-        <input
-          type="search"
-          placeholder="Buscar en los resultados…"
-          aria-label="Buscar en los resultados"
-          value={termino}
-          onChange={(e) => { setTermino(e.target.value); setPagina(0); }}
-        />
+        <div className="buscador-tabla">
+          <Icono nombre="buscar" />
+          <input
+            type="search"
+            placeholder="Filtrar en los resultados…"
+            aria-label="Buscar en los resultados"
+            value={termino}
+            onChange={(e) => { setTermino(e.target.value); setPagina(0); }}
+          />
+        </div>
         <span className="cuenta">
           {filtradas.length === filas.length
             ? `${filas.length} registro${filas.length === 1 ? '' : 's'}`
@@ -94,17 +101,23 @@ export function Tabla({
           title="Descargar CSV"
           onClick={() => descargar(`${nombreArchivo}.csv`, aCsv(cols, filtradas))}
         >
-          <Icono nombre="descargar" /> CSV
+          <Icono nombre="descargar" /> Exportar CSV
         </button>
       </div>
       <div className="tabla-envoltura">
         <table>
           <thead>
             <tr>
-              {cols.map((c) => (
-                <th key={c.campo} onClick={() => ordenar(c.campo)} title="Ordenar">{c.etiqueta}</th>
-              ))}
-              {acciones.length ? <th /> : null}
+              {cols.map((c) => {
+                const activo = orden?.campo === c.campo;
+                return (
+                  <th key={c.campo} onClick={() => ordenar(c.campo)} title="Ordenar por esta columna">
+                    <span>{c.etiqueta}</span>
+                    {activo ? <em className="orden-flecha">{orden.asc ? ' ▲' : ' ▼'}</em> : null}
+                  </th>
+                );
+              })}
+              {acciones.length ? <th className="th-acciones">Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -119,7 +132,7 @@ export function Tabla({
                     {acciones.filter((a) => !a.visible || a.visible(fila)).map((a) => (
                       <button
                         key={a.texto}
-                        className={`boton chico ${a.peligro ? 'peligro' : ''}`}
+                        className={`boton chico ${a.peligro ? 'peligro' : ''} ${a.primario ? 'primario' : ''}`}
                         type="button"
                         onClick={() => alAccion(a, fila)}
                       >
@@ -142,7 +155,7 @@ export function Tabla({
       {totalPaginas > 1 ? (
         <div className="paginacion">
           <button className="boton chico" type="button" disabled={paginaActual === 0} onClick={() => setPagina(paginaActual - 1)}>Anterior</button>
-          {`Página ${paginaActual + 1} de ${totalPaginas}`}
+          <span>{`Página ${paginaActual + 1} de ${totalPaginas}`}</span>
           <button className="boton chico" type="button" disabled={paginaActual >= totalPaginas - 1} onClick={() => setPagina(paginaActual + 1)}>Siguiente</button>
         </div>
       ) : null}

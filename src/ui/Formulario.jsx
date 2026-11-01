@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useMemo, useState } from 'react';
 import { obtenerCatalogo } from '../api.js';
 import { etiquetaDe } from './formato.js';
+import { Icono } from './Icono.jsx';
 
 function valorInicial(campo, valores) {
   let v = valores[campo.nombre];
@@ -18,6 +19,15 @@ function valoresIniciales(campos, valores) {
     inicio[campo.nombre] = valorInicial(campo, valores);
   }
   return inicio;
+}
+
+function valoresVacios(campos) {
+  const vacio = {};
+  for (const campo of campos) {
+    if (campo.tipo === 'oculto') continue;
+    vacio[campo.nombre] = campo.tipo === 'checkbox' ? false : '';
+  }
+  return vacio;
 }
 
 function leerValor(campo, crudo) {
@@ -68,7 +78,7 @@ function CampoSelect({ campo, value, onChange, id }) {
     ? `No se pudo cargar: ${error}`
     : cargando
       ? 'Cargando…'
-      : campo.requerido ? 'Seleccione…' : '(Todos)';
+      : campo.requerido ? 'Seleccione…' : 'Todos';
 
   const actual = value === undefined || value === null ? '' : String(value);
 
@@ -127,7 +137,7 @@ function Control({ campo, value, onChange, id }) {
       max={campo.tipo === 'number' || campo.tipo === 'date' ? campo.max : undefined}
       maxLength={campo.tipo === 'number' ? undefined : campo.max}
       step={campo.paso ?? (campo.tipo === 'number' ? 'any' : undefined)}
-      placeholder={campo.marcador}
+      placeholder={campo.marcador || 'Escribir…'}
       autoComplete={campo.autocomplete ?? (campo.tipo === 'password' ? 'new-password' : 'off')}
       onChange={(e) => onChange(e.target.value)}
     />
@@ -148,21 +158,23 @@ export const Formulario = forwardRef(function Formulario({
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
 
-  const leer = useCallback(() => {
+  const leerDeEstado = useCallback((mapaEstado) => {
     const datos = {};
     for (const campo of campos) {
       if (campo.tipo === 'oculto' && valores[campo.nombre] !== undefined) {
         datos[campo.nombre] = valores[campo.nombre];
       }
     }
-    const actuales = { ...estado };
+    const actuales = { ...mapaEstado };
     for (const campo of visibles) {
       if (campo.visibleSi && !campo.visibleSi(leerParcial(campos, actuales, valores))) continue;
-      const v = leerValor(campo, estado[campo.nombre]);
+      const v = leerValor(campo, mapaEstado[campo.nombre]);
       if (v !== undefined) datos[campo.nombre] = v;
     }
     return datos;
-  }, [campos, estado, valores, visibles]);
+  }, [campos, valores, visibles]);
+
+  const leer = useCallback(() => leerDeEstado(estado), [estado, leerDeEstado]);
 
   useImperativeHandle(ref, () => ({ leer }), [leer]);
 
@@ -184,15 +196,51 @@ export const Formulario = forwardRef(function Formulario({
     }
   }
 
+  async function limpiarFiltros() {
+    const limpios = valoresVacios(campos);
+    setEstado(limpios);
+    setError(null);
+    setEnviando(true);
+    try {
+      await alEnviar(leerDeEstado(limpios));
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
   const enviar = (
     <button className="boton primario" type="submit" disabled={enviando}>
-      {enviando ? 'Procesando…' : textoEnviar}
+      {filtros ? <Icono nombre="buscar" /> : null}
+      <span>{enviando ? 'Procesando…' : textoEnviar}</span>
     </button>
   );
 
   return (
-    <form noValidate={false} onSubmit={onSubmit}>
-      <div className={filtros ? 'form-filtros' : 'form-rejilla'}>
+    <form noValidate={false} onSubmit={onSubmit} className={filtros ? 'contenedor-filtros' : ''}>
+      {filtros ? (
+        <div className="filtros-cabecera">
+          <div className="filtros-insignia">
+            <Icono nombre="filtro" />
+            <span>Filtros de consulta</span>
+          </div>
+          <div className="filtros-acciones">
+            <button
+              className="boton boton-limpiar"
+              type="button"
+              disabled={enviando}
+              onClick={limpiarFiltros}
+            >
+              <Icono nombre="limpiar" />
+              <span>Limpiar</span>
+            </button>
+            {enviar}
+          </div>
+        </div>
+      ) : null}
+
+      <div className={filtros ? 'form-filtros-grid' : 'form-rejilla'}>
         {visibles.map((campo) => {
           const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
           const id = `${baseId}-${campo.nombre}`;
@@ -219,8 +267,8 @@ export const Formulario = forwardRef(function Formulario({
             </div>
           );
         })}
-        {filtros ? enviar : null}
       </div>
+
       {!filtros ? (
         <div className="form-pie">
           {alCancelar ? <button className="boton" type="button" onClick={alCancelar}>Cancelar</button> : null}

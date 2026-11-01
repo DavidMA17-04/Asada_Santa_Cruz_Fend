@@ -173,6 +173,28 @@ export const dataWarehouse = {
       },
     },
     {
+      titulo: 'Incidencias',
+      pestana: 'Incidencias',
+      permisos: DW,
+      ruta: '/dw/incidencias',
+      descripcion: 'Cantidad, estado y días de atención de incidencias según el Data Warehouse. Los datos se actualizan con cada carga ETL.',
+      filtros: [
+        { nombre: 'anio', etiqueta: 'Año', tipo: 'number', min: 2000, valor: anioActual },
+        { nombre: 'por', etiqueta: 'Agrupar por', requerido: true, valor: 'tipo', opciones: [
+          { valor: 'tipo', texto: 'Tipo' }, { valor: 'mes', texto: 'Mes' }, { valor: 'prioridad', texto: 'Prioridad' }] },
+        C.tipoIncidencia(),
+      ],
+      grafico: {
+        etiqueta: (f) => f.tipo_incidencia ?? (f.mes ? etiquetaPeriodo(f) : f.prioridad),
+        series: [
+          { campo: 'incidencias', nombre: 'Total' },
+          { campo: 'abiertas', nombre: 'Abiertas' },
+          { campo: 'en_proceso', nombre: 'En proceso' },
+          { campo: 'resueltas', nombre: 'Resueltas' },
+        ],
+      },
+    },
+    {
       titulo: 'Cargas ETL',
       pestana: 'ETL',
       permisos: ETL,

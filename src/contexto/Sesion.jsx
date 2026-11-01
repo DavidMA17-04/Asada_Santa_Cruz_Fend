@@ -1,7 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { alExpirarSesion, obtener, sesion } from '../api.js';
+import { alExpirarSesion, api, obtener, sesion } from '../api.js';
 
 const SesionContext = createContext(null);
+
+// CU-6.2 1a: la sesión se cierra sola tras este tiempo sin actividad.
+const MINUTOS_INACTIVIDAD = Number(import.meta.env.VITE_MINUTOS_INACTIVIDAD || 30);
+const EVENTOS_ACTIVIDAD = ['mousedown', 'keydown', 'scroll', 'touchstart'];
 
 export function SesionProvider({ children }) {
   const [actual, setActual] = useState(sesion.actual);
@@ -32,6 +36,30 @@ export function SesionProvider({ children }) {
       setMensajeExpiracion(mensaje || 'La sesión expiró. Inicie sesión de nuevo.');
     });
   }, []);
+
+  // Cierre por inactividad: cualquier clic, tecla o desplazamiento reinicia el contador.
+  // Al vencer se avisa a la API (queda en la bitácora y se invalida el token).
+  const token = actual?.token;
+  useEffect(() => {
+    if (!token || !(MINUTOS_INACTIVIDAD > 0)) return undefined;
+    let temporizador;
+    const vencer = async () => {
+      try { await api('POST', '/auth/logout'); } catch { /* el token se descarta igual */ }
+      sesion.borrar();
+      setActual(null);
+      setMensajeExpiracion(`La sesión se cerró por ${MINUTOS_INACTIVIDAD} minutos de inactividad. Inicie sesión de nuevo.`);
+    };
+    const reiniciar = () => {
+      clearTimeout(temporizador);
+      temporizador = setTimeout(vencer, MINUTOS_INACTIVIDAD * 60 * 1000);
+    };
+    reiniciar();
+    EVENTOS_ACTIVIDAD.forEach((e) => window.addEventListener(e, reiniciar, { passive: true }));
+    return () => {
+      clearTimeout(temporizador);
+      EVENTOS_ACTIVIDAD.forEach((e) => window.removeEventListener(e, reiniciar));
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!sesion.actual?.token) {

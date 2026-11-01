@@ -1,9 +1,13 @@
 // R6 · Seguridad: empleados, usuarios, roles, permisos y bitácora (CU-6.x).
+import { sesion } from '../api.js';
 import { P } from '../permisos.js';
 import { C, fechas } from './comunes.js';
 
 const GESTIONAR = [P.GESTIONAR_SEGURIDAD];
 const BITACORA = [P.CONSULTAR_BITACORA];
+// Acciones que escriben los triggers y sp_RegistrarEventoBitacora.
+const ACCIONES_BITACORA = ['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FALLIDO', 'LOGOUT', 'CONSULTA', 'ALERTA', 'RESTORE', 'ETL', 'MANTENIMIENTO', 'PRUEBAS']
+  .map((a) => ({ valor: a, texto: a }));
 
 const CAMPOS_EMPLEADO = [
   { nombre: 'cedula', etiqueta: 'Cédula', max: 20 },
@@ -14,12 +18,35 @@ const CAMPOS_EMPLEADO = [
   { nombre: 'telefono', etiqueta: 'Teléfono', max: 20 },
 ];
 
+// Roles que crea 16_datos_iniciales.sql. La API no deja eliminarlos ni renombrarlos (CU-6.5 2a).
+const ROLES_BASE = ['Junta Directiva', 'Administrador del Sistema', 'Fontanero', 'Administrador de BD'];
+const esRolBase = (f) => ROLES_BASE.includes(f.nombre_rol);
+// Permisos que la API reconoce por su nombre; no se pueden renombrar.
+const PERMISOS_API = Object.values(P);
+// dbo.Rol.nombre_rol es varchar(25).
+const NOMBRE_ROL = { nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 25, ancho: true };
+
 const requerir = (campos, nombres) => campos.map((c) => (nombres.includes(c.nombre) ? { ...c, requerido: true } : c));
 
+// Mismas reglas que dbo.fn_ValidarComplejidadContrasena; la base las vuelve a validar.
+function validarContrasena(valor = '') {
+  if (valor.length < 8 || !/[A-Z]/.test(valor) || !/[a-z]/.test(valor) || !/[0-9]/.test(valor) || !/[^A-Za-z0-9]/.test(valor)) {
+    return 'Debe tener al menos 8 caracteres, con mayúscula, minúscula, número y símbolo.';
+  }
+  return null;
+}
+
 const CONTRASENA = {
-  nombre: 'contrasena', etiqueta: 'Contraseña', tipo: 'password', requerido: true,
-  ayuda: 'Las reglas de complejidad las valida la base de datos.',
+  nombre: 'contrasena', etiqueta: 'Contraseña', tipo: 'password', requerido: true, max: 128,
+  ayuda: 'Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.',
+  validar: validarContrasena,
 };
+
+// La API no deja desactivar ni cambiar el rol de la cuenta propia; aquí se ocultan esos botones.
+// El driver puede devolver los id como texto, por eso se comparan como número.
+const usuarioActual = () => sesion.actual?.usuario || {};
+const esCuentaPropia = (f) => Number(f.id_usuario_sistema) === Number(usuarioActual().id_usuario_sistema);
+const esEmpleadoPropio = (f) => Number(f.id_empleado) === Number(usuarioActual().id_empleado);
 
 export default {
   id: 'seguridad',
@@ -32,7 +59,7 @@ export default {
       pestana: 'Usuarios',
       permisos: GESTIONAR,
       ruta: '/seguridad/usuarios',
-      descripcion: 'Cuentas de acceso. Tras varios intentos fallidos la cuenta se bloquea; "Reactivar" también la desbloquea.',
+      descripcion: 'Cuentas de acceso. Tras 3 intentos fallidos la cuenta se bloquea; "Reactivar" también la desbloquea. Su propia cuenta solo la puede desactivar o cambiar de rol otro administrador.',
       botones: [{
         texto: 'Nuevo usuario', primario: true, ruta: '/seguridad/usuarios',
         campos: [
@@ -51,7 +78,7 @@ export default {
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}/permisos`,
         },
         {
-          texto: 'Cambiar rol', metodo: 'PUT',
+          texto: 'Cambiar rol', metodo: 'PUT', visible: (f) => !esCuentaPropia(f),
           titulo: (f) => `Rol de ${f.nombre_usuario}`,
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}`,
           campos: [C.rol({ requerido: true, ancho: true })],
@@ -72,7 +99,7 @@ export default {
           exito: () => 'Usuario reactivado.',
         },
         {
-          texto: 'Desactivar', peligro: true, visible: (f) => f.activo,
+          texto: 'Desactivar', peligro: true, visible: (f) => f.activo && !esCuentaPropia(f),
           ruta: (f) => `/seguridad/usuarios/${f.id_usuario_sistema}/desactivar`,
           confirmar: (f) => `¿Desactivar la cuenta ${f.nombre_usuario}? Perderá el acceso de inmediato.`,
           exito: () => 'Usuario desactivado.',
@@ -108,7 +135,7 @@ export default {
           exito: () => 'Empleado actualizado.',
         },
         {
-          texto: 'Desactivar', metodo: 'PATCH', peligro: true, visible: (f) => f.activo,
+          texto: 'Desactivar', metodo: 'PATCH', peligro: true, visible: (f) => f.activo && !esEmpleadoPropio(f),
           ruta: (f) => `/seguridad/empleados/${f.id_empleado}/estado`,
           cuerpo: () => ({ activo: false }),
           confirmar: (f) => `¿Desactivar a ${f.nombre_completo}? Su usuario dejará de tener acceso.`,
@@ -127,43 +154,46 @@ export default {
       titulo: 'Roles',
       permisos: GESTIONAR,
       ruta: '/seguridad/roles',
-      descripcion: 'Los permisos se asignan al rol. Un cambio aplica de inmediato a todos los usuarios del rol.',
+      descripcion: 'Los permisos se asignan al rol. Un cambio aplica de inmediato a todos los usuarios del rol. Los roles base no se eliminan ni se renombran.',
       botones: [{
         texto: 'Nuevo rol', primario: true, ruta: '/seguridad/roles',
-        campos: [{ nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 50, ancho: true }],
+        campos: [NOMBRE_ROL],
         exito: () => 'Rol creado.',
       }],
       acciones: [
+        // CU-6.6: muestra todos los permisos por módulo y permite marcarlos o desmarcarlos.
         {
           texto: 'Permisos', metodo: 'GET',
           titulo: (f) => `Permisos del rol ${f.nombre_rol}`,
-          ruta: (f) => `/seguridad/roles/${f.id_rol}/permisos`,
-          ocultar: ['id_rol_permiso'],
-          botones: (rol) => [{
-            texto: 'Asignar permiso', primario: true, ruta: `/seguridad/roles/${rol.id_rol}/permisos`,
-            campos: [C.permiso({ requerido: true, ancho: true })],
-            textoEnviar: 'Asignar',
-            exito: () => 'Permiso asignado.',
-          }],
-          acciones: (rol) => [{
-            texto: 'Quitar', metodo: 'DELETE', peligro: true,
-            ruta: (f) => `/seguridad/roles/${rol.id_rol}/permisos/${f.id_permiso}`,
-            confirmar: (f) => `¿Quitar "${f.nombre_permiso}" al rol ${rol.nombre_rol}?`,
-            exito: () => 'Permiso retirado.',
-          }],
+          ruta: (f) => `/seguridad/roles/${f.id_rol}/matriz`,
+          ocultar: ['id_permiso'],
+          acciones: (rol) => [
+            {
+              texto: 'Asignar', primario: true, visible: (f) => !f.asignado,
+              ruta: `/seguridad/roles/${rol.id_rol}/permisos`,
+              cuerpo: (f) => ({ id_permiso: f.id_permiso }),
+              exito: (_r, f) => `Permiso "${f.nombre_permiso}" asignado.`,
+            },
+            {
+              texto: 'Quitar', metodo: 'DELETE', peligro: true, visible: (f) => f.asignado,
+              ruta: (f) => `/seguridad/roles/${rol.id_rol}/permisos/${f.id_permiso}`,
+              confirmar: (f) => `¿Quitar "${f.nombre_permiso}" al rol ${rol.nombre_rol}?`,
+              exito: () => 'Permiso retirado.',
+            },
+          ],
         },
         {
-          texto: 'Renombrar', metodo: 'PUT',
+          texto: 'Renombrar', metodo: 'PUT', visible: (f) => !esRolBase(f),
           titulo: (f) => `Renombrar el rol ${f.nombre_rol}`,
           ruta: (f) => `/seguridad/roles/${f.id_rol}`,
-          campos: [{ nombre: 'nombre_rol', etiqueta: 'Nombre del rol', requerido: true, max: 50, ancho: true }],
+          campos: [NOMBRE_ROL],
           inicial: (f) => ({ nombre_rol: f.nombre_rol }),
           exito: () => 'Rol actualizado.',
         },
         {
-          texto: 'Eliminar', metodo: 'DELETE', peligro: true, visible: (f) => !f.usuarios_activos,
+          texto: 'Eliminar', metodo: 'DELETE', peligro: true, visible: (f) => !esRolBase(f) && !f.usuarios_activos,
           ruta: (f) => `/seguridad/roles/${f.id_rol}`,
-          confirmar: (f) => `¿Eliminar el rol ${f.nombre_rol}?`,
+          confirmar: (f) => `¿Eliminar el rol ${f.nombre_rol}? Solo se puede si no tiene usuarios ni permisos asignados.`,
           exito: () => 'Rol eliminado.',
         },
       ],
@@ -173,7 +203,7 @@ export default {
       pestana: 'Permisos',
       permisos: GESTIONAR,
       ruta: '/seguridad/permisos',
-      descripcion: 'Catálogo de permisos agrupados por módulo. La API reconoce los permisos por su nombre: renombrar uno existente le quita el acceso a quienes lo usan.',
+      descripcion: 'Catálogo de permisos agrupados por módulo. Los permisos que usa la API no se pueden renombrar; los nuevos se asignan a un rol desde la pestaña Roles.',
       ocultar: ['id_modulo'],
       botones: [
         {
@@ -187,22 +217,38 @@ export default {
           exito: () => 'Módulo creado.',
         },
       ],
-      acciones: [{
-        texto: 'Editar', metodo: 'PUT',
-        titulo: (f) => `Editar el permiso ${f.nombre_permiso}`,
-        ruta: (f) => `/seguridad/permisos/${f.id_permiso}`,
-        campos: [C.modulo({ requerido: true }), { nombre: 'nombre_permiso', etiqueta: 'Nombre del permiso', requerido: true, max: 50 }],
-        inicial: (f) => ({ id_modulo: f.id_modulo, nombre_permiso: f.nombre_permiso }),
-        exito: () => 'Permiso actualizado.',
-      }],
+      acciones: [
+        {
+          texto: 'Editar', metodo: 'PUT', visible: (f) => !PERMISOS_API.includes(f.nombre_permiso),
+          titulo: (f) => `Editar el permiso ${f.nombre_permiso}`,
+          ruta: (f) => `/seguridad/permisos/${f.id_permiso}`,
+          campos: [C.modulo({ requerido: true }), { nombre: 'nombre_permiso', etiqueta: 'Nombre del permiso', requerido: true, max: 50 }],
+          inicial: (f) => ({ id_modulo: f.id_modulo, nombre_permiso: f.nombre_permiso }),
+          exito: () => 'Permiso actualizado.',
+        },
+        {
+          texto: 'Renombrar módulo', metodo: 'PUT',
+          titulo: (f) => `Renombrar el módulo ${f.nombre_modulo}`,
+          ruta: (f) => `/seguridad/modulos/${f.id_modulo}`,
+          campos: [{ nombre: 'nombre_modulo', etiqueta: 'Nombre del módulo', requerido: true, max: 50, ancho: true }],
+          inicial: (f) => ({ nombre_modulo: f.nombre_modulo }),
+          exito: () => 'Módulo actualizado.',
+        },
+      ],
     },
     {
       titulo: 'Bitácora',
       permisos: BITACORA,
       ruta: '/seguridad/bitacora',
-      descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo.',
+      descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo. Es de solo lectura.',
+      mensajeVacio: 'No hay registros que cumplan los filtros.',
       filtros: [
-        { nombre: 'accion', etiqueta: 'Acción', marcador: 'INSERT, UPDATE, LOGIN…' },
+        // CU-6.7: filtro por usuario. La lista de usuarios solo la ve quien gestiona la seguridad.
+        {
+          nombre: 'id_usuario_sistema', etiqueta: 'Usuario', permisos: GESTIONAR,
+          catalogo: { ruta: '/seguridad/usuarios', valor: 'id_usuario_sistema', texto: 'nombre_usuario' },
+        },
+        { nombre: 'accion', etiqueta: 'Acción', opciones: ACCIONES_BITACORA },
         { nombre: 'tabla_afectada', etiqueta: 'Tabla' },
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date', valor: () => fechas.haceDias(7) },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date' },

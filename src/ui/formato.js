@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 
-const SIGLAS = { id: 'ID', m3: 'm³', mb: 'MB', dw: 'DW', etl: 'ETL', bd: 'BD' };
+const SIGLAS = { id: 'ID', m3: 'm³', mb: 'MB', dw: 'DW', etl: 'ETL', bd: 'BD', sla: 'SLA' };
 const ACENTOS = {
   conexion: 'conexión', identificacion: 'identificación', direccion: 'dirección', telefono: 'teléfono',
   electronico: 'electrónico', emision: 'emisión', metodo: 'método', descripcion: 'descripción',
@@ -12,6 +12,7 @@ const ACENTOS = {
   restauracion: 'restauración', recuperacion: 'recuperación', proposito: 'propósito',
   incidencia: 'incidencia', bitacora: 'bitácora', maximo: 'máximo', minimo: 'mínimo',
   ubicacion: 'ubicación', numero: 'número', razon: 'razón', modificacion: 'modificación', solucion: 'solución',
+  anotacion: 'anotación', reincidentes: 'reincidentes',
 };
 
 /** "fecha_ultima_lectura" -> "Fecha última lectura" */
@@ -40,14 +41,14 @@ const ES_MEDIDA = /(m3|consumo|lectura|porcentaje|_mb$|promedio|horas|dias|varia
 
 function colorEstado(valor) {
   const v = String(valor).toLowerCase();
-  if (/^(activ[oa]|pagada|aplicado|exitos[oa]|resuelta|finalizado|ok|baja)$/.test(v)) return 'verde';
-  if (/^(pendiente|en proceso|programado|suspendida|media|medio|solicitada|abierta)$/.test(v)) return 'ambar';
-  if (/^(vencida|cortada|dañado|anulado|fallid[oa]|alta|alto|cancelado|crítico|critico|error)$/.test(v)) return 'rojo';
+  if (/^(activ[oa]|pagada|aplicado|exitos[oa]|resuelta|finalizado|ok|baja|en tiempo|válido|valido)$/.test(v)) return 'verde';
+  if (/^(pendiente|en proceso|programado|suspendida|media|medio|solicitada|abierta|por vencer)$/.test(v)) return 'ambar';
+  if (/^(vencida|cortada|dañado|anulado|fallid[oa]|alta|alto|cancelado|crítico|critico|error|inválido|invalido)$/.test(v)) return 'rojo';
   if (/^(inactiva|sustituido|retirado)$/.test(v)) return '';
   return 'azul';
 }
 
-const CAMPOS_INSIGNIA = /^(estado|estado_factura|estado_final|prioridad|nivel|resultado|tipo_abonado)$/;
+const CAMPOS_INSIGNIA = /^(estado|estado_factura|estado_final|estado_sla|estado_conexion|prioridad|nivel|resultado|tipo_abonado)$/;
 
 /** Devuelve { contenido, clase } para mostrar un valor en una celda. */
 export function formatearCelda(campo, valor) {

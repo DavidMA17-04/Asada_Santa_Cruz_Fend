@@ -32,9 +32,10 @@ export const sesion = {
 };
 
 export class ErrorApi extends Error {
-  constructor(estado, mensaje) {
+  constructor(estado, mensaje, codigo = null) {
     super(mensaje);
     this.estado = estado;
+    this.codigo = codigo;
   }
 }
 
@@ -83,7 +84,10 @@ export async function api(metodo, ruta, cuerpo) {
 
   if (!respuesta.ok || json.ok === false) {
     if (respuesta.status === 401 && token && ruta !== '/auth/login') alExpirar(json.mensaje);
-    throw new ErrorApi(respuesta.status, json.mensaje || 'Ocurrió un error inesperado.');
+    const mensaje = json.codigo === 50207
+      ? (json.mensaje || 'Esta lectura ya fue facturada y no puede corregirse.')
+      : (json.mensaje || 'Ocurrió un error inesperado.');
+    throw new ErrorApi(respuesta.status, mensaje, json.codigo ?? null);
   }
 
   if (!esLectura) cache.clear();
