@@ -30,19 +30,11 @@ export function Tabla({
   columnas,
   porPagina = 25,
   nombreArchivo = 'datos',
-  mensajeVacio = 'No hay registros para mostrar.',
 }) {
   const cols = useMemo(() => (
     (columnas || Object.keys(filas[0] || {}).filter((c) => !ocultar.includes(c)))
       .map((c) => (typeof c === 'string' ? { campo: c, etiqueta: etiquetaDe(c) } : { etiqueta: etiquetaDe(c.campo), ...c }))
   ), [columnas, filas, ocultar]);
-
-  const claseDeCol = (col, fila) => (typeof col.clase === 'function' ? col.clase(fila) : col.clase);
-
-  const claseCelda = (col, fila) => {
-    const base = formatearCelda(col.campo, fila[col.campo]).clase;
-    return [base, claseDeCol(col, fila)].filter(Boolean).join(' ');
-  };
 
   const [termino, setTermino] = useState('');
   const [orden, setOrden] = useState(null);
@@ -69,7 +61,11 @@ export function Tabla({
   }, [filas, cols, termino, orden]);
 
   if (!filas.length) {
-    return <div className="vacio tabla-envoltura">{mensajeVacio}</div>;
+    return (
+      <div className="vacio tabla-envoltura">
+        <span>No hay registros para mostrar en este momento.</span>
+      </div>
+    );
   }
 
   const totalPaginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
@@ -84,13 +80,16 @@ export function Tabla({
   return (
     <div>
       <div className="tabla-barra">
-        <input
-          type="search"
-          placeholder="Buscar en los resultados…"
-          aria-label="Buscar en los resultados"
-          value={termino}
-          onChange={(e) => { setTermino(e.target.value); setPagina(0); }}
-        />
+        <div className="buscador-tabla">
+          <Icono nombre="buscar" />
+          <input
+            type="search"
+            placeholder="Filtrar en los resultados…"
+            aria-label="Buscar en los resultados"
+            value={termino}
+            onChange={(e) => { setTermino(e.target.value); setPagina(0); }}
+          />
+        </div>
         <span className="cuenta">
           {filtradas.length === filas.length
             ? `${filas.length} registro${filas.length === 1 ? '' : 's'}`
@@ -102,44 +101,40 @@ export function Tabla({
           title="Descargar CSV"
           onClick={() => descargar(`${nombreArchivo}.csv`, aCsv(cols, filtradas))}
         >
-          <Icono nombre="descargar" /> CSV
+          <Icono nombre="descargar" /> Exportar CSV
         </button>
       </div>
       <div className="tabla-envoltura">
         <table>
           <thead>
             <tr>
-              {cols.map((c) => (
-                <th
-                  key={c.campo}
-                  className={typeof c.clase === 'string' ? c.clase : ''}
-                  onClick={() => ordenar(c.campo)}
-                  title="Ordenar"
-                >
-                  {c.etiqueta}
-                </th>
-              ))}
-              {acciones.length ? <th className="acciones">Acciones</th> : null}
+              {cols.map((c) => {
+                const activo = orden?.campo === c.campo;
+                return (
+                  <th key={c.campo} onClick={() => ordenar(c.campo)} title="Ordenar por esta columna">
+                    <span>{c.etiqueta}</span>
+                    {activo ? <em className="orden-flecha">{orden.asc ? ' ▲' : ' ▼'}</em> : null}
+                  </th>
+                );
+              })}
+              {acciones.length ? <th className="th-acciones">Acciones</th> : null}
             </tr>
           </thead>
           <tbody>
             {visibles.length ? visibles.map((fila, i) => (
               <tr key={i}>
                 {cols.map((c) => {
-                  const { contenido } = formatearCelda(c.campo, fila[c.campo]);
-                  return <td key={c.campo} className={claseCelda(c, fila)}>{contenido}</td>;
+                  const { contenido, clase } = formatearCelda(c.campo, fila[c.campo]);
+                  return <td key={c.campo} className={clase}>{contenido}</td>;
                 })}
                 {acciones.length ? (
                   <td className="acciones">
                     {acciones.filter((a) => !a.visible || a.visible(fila)).map((a) => (
                       <button
                         key={a.texto}
-                        className={`boton chico${a.primario ? ' primario' : ''}${a.peligro ? ' peligro' : ''}${a.suave ? ' suave' : ''}`}
+                        className={`boton chico ${a.peligro ? 'peligro' : ''} ${a.primario ? 'primario' : ''}`}
                         type="button"
-                        onClick={() => {
-                          if (!alAccion) return;
-                          Promise.resolve(alAccion(a, fila)).catch(() => {});
-                        }}
+                        onClick={() => alAccion(a, fila)}
                       >
                         {a.texto}
                       </button>
@@ -160,7 +155,7 @@ export function Tabla({
       {totalPaginas > 1 ? (
         <div className="paginacion">
           <button className="boton chico" type="button" disabled={paginaActual === 0} onClick={() => setPagina(paginaActual - 1)}>Anterior</button>
-          {`Página ${paginaActual + 1} de ${totalPaginas}`}
+          <span>{`Página ${paginaActual + 1} de ${totalPaginas}`}</span>
           <button className="boton chico" type="button" disabled={paginaActual >= totalPaginas - 1} onClick={() => setPagina(paginaActual + 1)}>Siguiente</button>
         </div>
       ) : null}

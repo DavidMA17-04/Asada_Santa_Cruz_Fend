@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api, obtener, sesion } from '../api.js';
-import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, Icono, Tabla } from '../ui/index.js';
+import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, Icono, ResumenVisualDatos, Tabla } from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
 
 const resolver = (valor, ...args) => (typeof valor === 'function' ? valor(...args) : valor);
@@ -91,7 +92,6 @@ export async function ejecutarAccion(accion, fila, recargar) {
       recargar?.();
     };
 
-    // Si la acción define campos, siempre abrir formulario (nunca enviar a ciegas).
     if (accion.campos) {
       let campos;
       try {
@@ -165,14 +165,19 @@ function ContenidoConsulta({ def, r, recargar }) {
       ) : null}
       {def.conjuntos && r.conjuntos ? (
         r.conjuntos.map((filas, i) => (
-          <div key={i}>
+          <div className="bloque-conjunto" key={i}>
             <h3>{def.conjuntos[i] || `Resultado ${i + 1}`}</h3>
+            <ResumenVisualDatos filas={filas} />
             <BloqueTabla filas={filas} />
           </div>
         ))
       ) : (
         <>
-          {def.grafico ? <GraficoBarras filas={r.datos} {...def.grafico} /> : null}
+          {def.grafico ? (
+            <GraficoBarras filas={r.datos || []} {...def.grafico} />
+          ) : (
+            <ResumenVisualDatos filas={r.datos || []} />
+          )}
           <Tabla filas={r.datos || []} {...opciones} />
         </>
       )}
@@ -223,7 +228,6 @@ function SeccionConsulta({ sec }) {
     if (sec.cargarAlInicio === false) return undefined;
     cargar(filtrosRef.current ? filtrosRef.current.leer() : {});
     return undefined;
-    // Una sección se monta de nuevo al cambiar de pestaña.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sec.ruta]);
 
@@ -250,10 +254,11 @@ function SeccionConsulta({ sec }) {
       <Encabezado sec={sec} herramientas={herramientas} />
       {campos.length ? (
         <Formulario
+          key={sec.ruta}
           ref={filtrosRef}
           campos={campos}
           filtros
-          textoEnviar="Buscar"
+          textoEnviar="Aplicar filtros"
           alEnviar={async (datos) => cargar(datos)}
         />
       ) : null}
@@ -265,7 +270,7 @@ function SeccionConsulta({ sec }) {
         </div>
       ) : null}
       {!cargando && !error && !resultado && sec.cargarAlInicio === false ? (
-        <p className="descripcion">Complete los filtros y presione Buscar.</p>
+        <p className="descripcion">Complete los filtros de consulta y presione Aplicar filtros.</p>
       ) : null}
     </section>
   );
@@ -292,7 +297,6 @@ function SeccionResumen({ sec }) {
 
   useEffect(() => {
     cargar();
-    // Una sección se monta de nuevo al cambiar de pestaña.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sec.ruta]);
 
@@ -407,49 +411,23 @@ const TIPOS = {
   resumen: SeccionResumen,
 };
 
-const pestanaActiva = new Map();
-
 export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
-  // requiereTodos: la página solo aparece si el usuario tiene todos esos permisos.
   if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
-  return pagina.secciones.filter((s) => puede(s.permisos ?? pagina.permisos ?? []));
+  return (pagina.secciones || []).filter((s) => puede(s.permisos ?? pagina.permisos ?? []));
 }
 
 export function MotorPagina({ pagina }) {
   const secciones = seccionesVisibles(pagina);
-  const [activa, setActiva] = useState(() => Math.min(pestanaActiva.get(pagina.id) ?? 0, Math.max(secciones.length - 1, 0)));
+  const [searchParams] = useSearchParams();
 
   if (!secciones.length) {
     return <div className="tarjeta">Su rol no tiene acceso a ninguna sección de este módulo.</div>;
   }
 
-  function mostrar(indice) {
-    setActiva(indice);
-    pestanaActiva.set(pagina.id, indice);
-  }
-
-  const sec = secciones[Math.min(activa, secciones.length - 1)];
+  const paramSec = Number(searchParams.get('sec'));
+  const indice = Number.isInteger(paramSec) && paramSec >= 0 && paramSec < secciones.length ? paramSec : 0;
+  const sec = secciones[indice];
   const Tipo = TIPOS[sec.tipo || 'consulta'];
 
-  return (
-    <>
-      {secciones.length > 1 ? (
-        <div className="pestanas" role="tablist">
-          {secciones.map((s, i) => (
-            <button
-              key={s.pestana || s.titulo}
-              type="button"
-              role="tab"
-              aria-selected={i === activa}
-              className={i === activa ? 'activa' : ''}
-              onClick={() => mostrar(i)}
-            >
-              {s.pestana || s.titulo}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <Tipo sec={sec} />
-    </>
-  );
+  return <Tipo key={`${pagina.id}-${indice}`} sec={sec} />;
 }

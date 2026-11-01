@@ -6,476 +6,407 @@ import { seccionesVisibles } from '../motor/MotorPagina.jsx';
 import { PAGINAS } from '../paginas/index.js';
 import { fechas } from '../paginas/comunes.js';
 import { P } from '../permisos.js';
-import { formatearCelda, moneda } from '../ui/formato.js';
-import { Icono } from '../ui/index.js';
+import { moneda, numero } from '../ui/formato.js';
+import { GraficoColumnas, GraficoDonut } from '../ui/Grafico.jsx';
+import { Icono } from '../ui/Icono.jsx';
 
-const PERM_PAGOS = [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS];
-const PERM_MANTENIMIENTO = [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO];
-const PERM_FACTURACION = [P.CONSULTAR_FACTURAS, P.GESTIONAR_FACTURACION];
-const PERM_ABONADOS = [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS];
-
+const suma = (filas, campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
 const enCurso = (f) => f.estado === 'Programado' || f.estado === 'En proceso';
-const fallidos = (filas) => (filas || []).filter((f) => f.estado === 'Fallido').length;
 
-const ACCIONES = [
-  { texto: 'Registrar pago', icono: 'pago', destino: 'pagos', permisos: [P.GESTIONAR_PAGOS] },
-  { texto: 'Registrar lectura', icono: 'medidor', destino: 'facturacion', permisos: [P.REGISTRAR_LECTURA] },
-  { texto: 'Nuevo abonado', icono: 'usuarios', destino: 'abonados', permisos: [P.GESTIONAR_ABONADOS] },
-  { texto: 'Registrar incidencia', icono: 'herramienta', destino: 'mantenimiento', permisos: [P.REGISTRAR_INCIDENCIA] },
-  { texto: 'Generar facturación', icono: 'factura', destino: 'facturacion', permisos: [P.GESTIONAR_FACTURACION] },
+const TARJETAS_KPI = [
+  {
+    id: 'abonados-total',
+    titulo: 'Total de abonados',
+    destino: 'abonados',
+    icono: 'usuarios',
+    tono: 'marino',
+    permisos: [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS],
+    cargar: () => obtener('/abonados'),
+    valor: (d) => numero(d.length),
+    detalle: () => 'Registrados en el sistema',
+  },
+  {
+    id: 'abonados-activos',
+    titulo: 'Abonados activos',
+    destino: 'abonados',
+    icono: 'usuarios',
+    tono: 'verde',
+    permisos: [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS],
+    cargar: () => obtener('/abonados'),
+    valor: (d) => numero(d.filter((f) => f.estado === 'Activo' || f.activo !== false).length),
+    detalle: () => 'Con estado activo',
+  },
+  {
+    id: 'recaudacion-mes',
+    titulo: 'Ingresos del mes',
+    destino: 'pagos',
+    icono: 'pago',
+    tono: 'oceano',
+    permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS],
+    cargar: () => obtener('/pagos/por-metodo', { desde: fechas.inicioMes(), hasta: fechas.hoy() }),
+    valor: (d) => moneda(suma(d, 'total_recaudado')),
+    detalle: (d) => `${numero(suma(d, 'cantidad_pagos'))} pagos registrados`,
+  },
+  {
+    id: 'por-cobrar',
+    titulo: 'Facturas por cobrar',
+    destino: 'pagos',
+    icono: 'factura',
+    tono: 'cielo',
+    permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS, P.CONSULTAR_FACTURAS],
+    cargar: () => obtener('/facturas/pendientes'),
+    valor: (d) => moneda(suma(d, 'saldo')),
+    detalle: (d) => `${numero(d.length)} facturas pendientes`,
+  },
+  {
+    id: 'alertas-incidencias',
+    titulo: 'Alertas e incidencias',
+    destino: 'mantenimiento?sec=1',
+    icono: 'alerta',
+    tono: 'ambar',
+    permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO, P.REGISTRAR_INCIDENCIA],
+    cargar: () => obtener('/incidencias/abiertas'),
+    valor: (d) => numero(d.length),
+    detalle: (d) => `${d.filter((f) => f.prioridad === 'Alta').length} de prioridad alta`,
+  },
+  {
+    id: 'mis-mantenimientos',
+    titulo: 'Mis mantenimientos',
+    destino: 'mantenimiento?sec=0',
+    icono: 'herramienta',
+    tono: 'marino',
+    permisos: [P.EJECUTAR_MANTENIMIENTO],
+    cargar: () => obtener('/mantenimientos/mios'),
+    valor: (d) => numero(d.filter(enCurso).length),
+    detalle: () => 'Órdenes asignadas en curso',
+  },
+  {
+    id: 'mantenimientos-pendientes',
+    titulo: 'Órdenes pendientes',
+    destino: 'mantenimiento?sec=3',
+    icono: 'herramienta',
+    tono: 'verde',
+    permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO],
+    cargar: () => obtener('/mantenimientos/pendientes'),
+    valor: (d) => numero(d.length),
+    detalle: () => 'Mantenimientos por finalizar',
+  },
+  {
+    id: 'medidores-sin-lectura',
+    titulo: 'Sin lectura este mes',
+    destino: 'facturacion?sec=0',
+    icono: 'medidor',
+    tono: 'cielo',
+    permisos: [P.REGISTRAR_LECTURA, P.CONSULTAR_FACTURAS],
+    cargar: () => obtener('/medidores/sin-lectura'),
+    valor: (d) => numero(d.length),
+    detalle: () => 'Medidores pendientes de ruta',
+  },
+  {
+    id: 'respaldos-recientes',
+    titulo: 'Respaldos exitosos',
+    destino: 'respaldos',
+    icono: 'respaldo',
+    tono: 'verde',
+    permisos: [P.RESPALDOS],
+    cargar: () => obtener('/respaldos/historial', { desde: fechas.haceDias(7) }),
+    valor: (d) => numero(d.filter((f) => f.estado === 'Exitoso').length),
+    detalle: () => 'En los últimos 7 días',
+  },
+  {
+    id: 'etl-fallidas',
+    titulo: 'Alertas de ETL',
+    destino: 'dw',
+    icono: 'alerta',
+    tono: 'ambar',
+    permisos: [P.ETL],
+    cargar: () => obtener('/dw/etl/fallidas'),
+    valor: (d) => numero(d.length),
+    detalle: () => 'Cargas pendientes de reintento',
+  },
 ];
 
-const INDICADORES = [
+const VISTAS_GRAFICO = [
   {
-    clave: 'misMantenimientos', titulo: 'Mis mantenimientos', destino: 'campo',
-    permisos: [P.EJECUTAR_MANTENIMIENTO], ruta: '/mantenimientos/mios',
-    valor: (d) => (d || []).filter(enCurso).length,
-    detalle: () => 'programados o en proceso', icono: 'herramienta', color: 'azul',
+    id: 'general',
+    etiqueta: 'General (Consumo)',
+    subtitulo: 'Facturación y consumo mensual registrado en el acueducto.',
+    permisos: [P.CONSULTAR_FACTURAS, P.GESTIONAR_FACTURACION],
+    cargar: () => obtener('/facturas/resumen-mensual'),
+    etiquetaFila: (f) => `${f.mes}/${f.anio}`,
+    campo: 'total_facturado',
+    formato: moneda,
+    pie: 'Mes de facturación',
+    vacio: 'No hay facturación registrada para este periodo.',
   },
   {
-    clave: 'medidores', titulo: 'Medidores sin lectura', destino: 'facturacion',
-    permisos: [...PERM_ABONADOS, P.REGISTRAR_LECTURA, P.REGISTRAR_INCIDENCIA, P.CONSULTAR_FACTURAS],
-    ruta: '/medidores/sin-lectura',
-    valor: (d) => (d || []).length,
-    detalle: () => 'en el mes actual', icono: 'medidor', color: 'ambar',
+    id: 'recaudacion',
+    etiqueta: 'Recaudación',
+    subtitulo: 'Ingresos recaudados según método de pago.',
+    permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS],
+    cargar: () => obtener('/pagos/por-metodo', { desde: fechas.haceDias(90), hasta: fechas.hoy() }),
+    etiquetaFila: 'metodo_pago',
+    campo: 'total_recaudado',
+    formato: moneda,
+    pie: 'Método de pago',
+    vacio: 'No hay pagos registrados para este periodo.',
   },
   {
-    clave: 'alertas', titulo: 'Alertas de consumo', destino: 'facturacion',
-    permisos: PERM_FACTURACION, ruta: '/alertas/activas',
-    valor: (d) => (d || []).length,
-    detalle: () => 'pendientes de revisión', icono: 'grafico', color: 'ambar',
+    id: 'incidencias',
+    etiqueta: 'Incidencias y SLA',
+    subtitulo: 'Incidencias operativas agrupadas por prioridad de atención.',
+    permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO, P.REGISTRAR_INCIDENCIA],
+    cargar: async () => {
+      const r = await obtener('/incidencias');
+      const filas = r.datos || [];
+      const mapa = new Map([['Alta', 0], ['Media', 0], ['Baja', 0]]);
+      filas.forEach((f) => {
+        const p = f.prioridad || 'Media';
+        mapa.set(p, (mapa.get(p) || 0) + 1);
+      });
+      return { datos: [...mapa.entries()].map(([prioridad, cantidad]) => ({ prioridad, cantidad })) };
+    },
+    etiquetaFila: 'prioridad',
+    campo: 'cantidad',
+    formato: numero,
+    pie: 'Nivel de prioridad',
+    vacio: 'No hay incidencias registradas para este periodo.',
   },
   {
-    clave: 'incidencias', titulo: 'Incidencias abiertas', destino: 'mantenimiento',
-    permisos: PERM_MANTENIMIENTO, ruta: '/incidencias/abiertas',
-    valor: (d) => (d || []).length,
-    detalle: (d) => `${(d || []).filter((f) => f.prioridad === 'Alta').length} de prioridad alta`,
-    icono: 'herramienta', color: 'rojo',
-  },
-  {
-    clave: 'mantenimientos', titulo: 'Mantenimientos pendientes', destino: 'mantenimiento',
-    permisos: PERM_MANTENIMIENTO, ruta: '/mantenimientos/pendientes',
-    valor: (d) => (d || []).length,
-    detalle: () => 'sin finalizar', icono: 'lista', color: 'ambar',
-  },
-  {
-    clave: 'bloqueados', titulo: 'Usuarios bloqueados', destino: 'seguridad',
-    permisos: [P.GESTIONAR_SEGURIDAD], ruta: '/seguridad/usuarios/bloqueados',
-    valor: (d) => (d || []).length,
-    detalle: () => 'por intentos fallidos', icono: 'escudo', color: 'ambar',
-  },
-  {
-    clave: 'respaldos', titulo: 'Respaldos (7 días)', destino: 'respaldos',
-    permisos: [P.RESPALDOS], ruta: '/respaldos/historial', filtros: { desde: fechas.haceDias(7) },
-    valor: (d) => (d || []).filter((f) => f.estado === 'Exitoso').length,
-    detalle: (d) => `${fallidos(d)} fallidos`, icono: 'respaldo', color: 'rojo',
-  },
-  {
-    clave: 'etl', titulo: 'Cargas ETL fallidas', destino: 'dw',
-    permisos: [P.ETL], ruta: '/dw/etl/fallidas',
-    valor: (d) => (d || []).length,
-    detalle: () => 'sin reintentar', icono: 'base', color: 'rojo',
-  },
-];
-
-const ALERTAS = [
-  {
-    clave: 'incidencias', titulo: 'Incidencias abiertas', gravedad: 'rojo', icono: 'herramienta',
-    destino: 'mantenimiento', permisos: PERM_MANTENIMIENTO,
-    detalle: (d) => `${(d || []).filter((f) => f.prioridad === 'Alta').length} de prioridad alta`,
-  },
-  {
-    clave: 'alertas', titulo: 'Alertas de consumo', gravedad: 'ambar', icono: 'grafico',
-    destino: 'facturacion', permisos: PERM_FACTURACION,
-    detalle: () => 'pendientes de revisión',
-  },
-  {
-    clave: 'medidores', titulo: 'Medidores sin lectura', gravedad: 'ambar', icono: 'medidor',
-    destino: 'facturacion', permisos: [...PERM_ABONADOS, P.REGISTRAR_LECTURA, P.REGISTRAR_INCIDENCIA, P.CONSULTAR_FACTURAS],
-    detalle: () => 'en el mes actual',
-  },
-  {
-    clave: 'mantenimientos', titulo: 'Mantenimientos pendientes', gravedad: 'ambar', icono: 'lista',
-    destino: 'mantenimiento', permisos: PERM_MANTENIMIENTO,
-    detalle: () => 'sin finalizar',
-  },
-  {
-    clave: 'bloqueados', titulo: 'Usuarios bloqueados', gravedad: 'ambar', icono: 'escudo',
-    destino: 'seguridad', permisos: [P.GESTIONAR_SEGURIDAD],
-    detalle: () => 'por intentos fallidos',
-  },
-  {
-    clave: 'respaldos', titulo: 'Respaldos fallidos', gravedad: 'rojo', icono: 'respaldo',
-    destino: 'respaldos', permisos: [P.RESPALDOS], valor: fallidos,
-    detalle: () => 'en los últimos 7 días',
-  },
-  {
-    clave: 'etl', titulo: 'Cargas ETL fallidas', gravedad: 'rojo', icono: 'base',
-    destino: 'dw', permisos: [P.ETL],
-    detalle: () => 'sin reintentar',
+    id: 'mantenimientos',
+    etiqueta: 'Mantenimientos',
+    subtitulo: 'Órdenes de trabajo según estado operativo.',
+    permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO, P.EJECUTAR_MANTENIMIENTO],
+    cargar: async () => {
+      const r = await obtener('/mantenimientos/mios').catch(() => obtener('/mantenimientos/pendientes'));
+      const filas = r.datos || [];
+      const mapa = new Map();
+      filas.forEach((f) => {
+        const e = f.estado || 'Programado';
+        mapa.set(e, (mapa.get(e) || 0) + 1);
+      });
+      return { datos: [...mapa.entries()].map(([estado, cantidad]) => ({ estado, cantidad })) };
+    },
+    etiquetaFila: 'estado',
+    campo: 'cantidad',
+    formato: numero,
+    pie: 'Estado de la orden',
+    vacio: 'No hay órdenes de mantenimiento registradas para este periodo.',
   },
 ];
 
-function KpiEsqueleto() {
+function TarjetaKpi({ def }) {
+  const [valor, setValor] = useState('0');
+  const [detalle, setDetalle] = useState('Cargando…');
+
+  useEffect(() => {
+    let vivo = true;
+    def.cargar()
+      .then((r) => {
+        if (!vivo) return;
+        const datos = r.datos || [];
+        setValor(def.valor(datos));
+        setDetalle(def.detalle(datos));
+      })
+      .catch(() => {
+        if (!vivo) return;
+        setValor('0');
+        setDetalle('Sin registros');
+      });
+    return () => { vivo = false; };
+  }, [def]);
+
   return (
-    <div className="kpi kpi-esqueleto" aria-hidden="true">
-      <div className="esqueleto esqueleto-icono" />
-      <div className="kpi-cuerpo">
-        <div className="esqueleto esqueleto-linea" style={{ width: '65%' }} />
-        <div className="esqueleto esqueleto-valor" />
-        <div className="esqueleto esqueleto-linea" style={{ width: '45%' }} />
+    <Link className="kpi-card" to={`/${def.destino}`}>
+      <div className="kpi-top">
+        <span className="kpi-titulo">{def.titulo}</span>
+        <span className={`kpi-icono tono-${def.tono || 'marino'}`}>
+          <Icono nombre={def.icono || 'grafico'} />
+        </span>
       </div>
-    </div>
-  );
-}
-
-function ListaEsqueleto({ filas = 3 }) {
-  return (
-    <div className="lista-esqueleto" aria-hidden="true">
-      {Array.from({ length: filas }).map((_, i) => <div key={i} className="esqueleto esqueleto-fila" />)}
-    </div>
-  );
-}
-
-function DonaCartera({ tramos, total }) {
-  const radio = 42;
-  const circunferencia = 2 * Math.PI * radio;
-  let acumulado = 0;
-
-  return (
-    <div className="dona-envoltura">
-      <svg className="dona" viewBox="0 0 120 120" role="img" aria-label="Distribución de la cartera por antigüedad">
-        <circle className="dona-fondo" cx="60" cy="60" r={radio} />
-        {tramos.map((t) => {
-          const parte = total > 0 ? t.monto / total : 0;
-          const trazo = parte * circunferencia;
-          const desplazamiento = -acumulado * circunferencia;
-          acumulado += parte;
-          return (
-            <circle
-              key={t.etiqueta}
-              className={`dona-segmento ${t.color}`}
-              cx="60"
-              cy="60"
-              r={radio}
-              strokeDasharray={`${trazo} ${circunferencia - trazo}`}
-              strokeDashoffset={desplazamiento}
-              transform="rotate(-90 60 60)"
-            />
-          );
-        })}
-        <text className="dona-total" x="60" y="58" textAnchor="middle">{moneda(total)}</text>
-        <text className="dona-sub" x="60" y="73" textAnchor="middle">cartera total</text>
-      </svg>
-      <ul className="dona-leyenda">
-        {tramos.map((t) => (
-          <li key={t.etiqueta}>
-            <i className={t.color} />
-            <span>{t.etiqueta}</span>
-            <b>
-              {moneda(t.monto)}
-              <small>{total > 0 ? `${((t.monto / total) * 100).toFixed(1)} %` : '0 %'}</small>
-            </b>
-          </li>
-        ))}
-      </ul>
-    </div>
+      <strong className="kpi-valor">{valor}</strong>
+      <small className="kpi-sub">{detalle}</small>
+    </Link>
   );
 }
 
 export function Inicio() {
-  const { actual, puede } = useSesion();
-  const u = actual.usuario;
-  const [datos, setDatos] = useState({});
-  const [cargando, setCargando] = useState(true);
+  const { puede } = useSesion();
+  const kpis = TARJETAS_KPI.filter((k) => puede(k.permisos)).slice(0, 5);
+  const vistas = VISTAS_GRAFICO.filter((v) => puede(v.permisos));
+  const accesos = PAGINAS.filter((p) => seccionesVisibles(p, puede).length > 0);
+
+  const [vistaActiva, setVistaActiva] = useState(0);
+  const [datosGrafico, setDatosGrafico] = useState([]);
+  const [cargandoGrafico, setCargandoGrafico] = useState(false);
+
+  const [estadoDonut, setEstadoDonut] = useState({
+    titulo: 'Estado de abonados',
+    enlace: '/abonados',
+    totalEtiqueta: 'Abonados totales',
+    segmentos: [
+      { etiqueta: 'Activos', valor: 0, color: '#144272' },
+      { etiqueta: 'Inactivos', valor: 0, color: '#cce5f0' },
+    ],
+  });
+
+  const vista = vistas[Math.min(vistaActiva, Math.max(vistas.length - 1, 0))] || VISTAS_GRAFICO[0];
 
   useEffect(() => {
     let vivo = true;
-    const cargados = {};
-    const tareas = [];
-
-    const pedir = (clave, ruta, filtros) => {
-      tareas.push(
-        obtener(ruta, filtros)
-          .then((r) => { cargados[clave] = Array.isArray(r.datos) ? r.datos : []; })
-          .catch(() => { cargados[clave] = null; })
-      );
-    };
-
-    if (puede(PERM_PAGOS)) {
-      tareas.push(
-        obtener('/mora/resumen')
-          .then((r) => { cargados.resumen = (r.datos || [])[0] || null; })
-          .catch(() => { cargados.resumen = null; })
-      );
-      pedir('facturas', '/facturas/pendientes');
-    }
-
-    INDICADORES.forEach((i) => {
-      if (puede(i.permisos)) pedir(i.clave, i.ruta, i.filtros);
-    });
-
-    if (puede([P.CONSULTAR_BITACORA])) pedir('bitacora', '/seguridad/bitacora/reciente');
-
-    Promise.all(tareas).then(() => {
-      if (!vivo) return;
-      setDatos(cargados);
-      setCargando(false);
-    });
-
+    if (!vista) return undefined;
+    setCargandoGrafico(true);
+    vista.cargar()
+      .then((r) => {
+        if (!vivo) return;
+        setDatosGrafico(r.datos || []);
+      })
+      .catch(() => {
+        if (!vivo) return;
+        setDatosGrafico([]);
+      })
+      .finally(() => {
+        if (vivo) setCargandoGrafico(false);
+      });
     return () => { vivo = false; };
-    // El dashboard se monta una vez por sesión; los permisos ya están resueltos.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [vista]);
 
-  const hora = new Date().getHours();
-  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
-  const nombre = (u.nombre_empleado || u.nombre_usuario).split(' ')[0];
-  const fechaTexto = new Intl.DateTimeFormat('es-CR', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  useEffect(() => {
+    let vivo = true;
+    if (puede([P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS])) {
+      obtener('/abonados')
+        .then((r) => {
+          if (!vivo) return;
+          const filas = r.datos || [];
+          const activos = filas.filter((f) => f.estado === 'Activo' || f.activo !== false).length;
+          const inactivos = Math.max(0, filas.length - activos);
+          setEstadoDonut({
+            titulo: 'Estado de abonados',
+            enlace: '/abonados',
+            totalEtiqueta: 'Abonados totales',
+            segmentos: [
+              { etiqueta: 'Activos', valor: activos, color: '#144272' },
+              { etiqueta: 'Inactivos', valor: inactivos, color: '#cce5f0' },
+            ],
+          });
+        })
+        .catch(() => {});
+    } else if (puede([P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO, P.EJECUTAR_MANTENIMIENTO])) {
+      obtener('/mantenimientos/mios')
+        .catch(() => obtener('/mantenimientos/pendientes'))
+        .then((r) => {
+          if (!vivo) return;
+          const filas = r.datos || [];
+          const finalizados = filas.filter((f) => f.estado === 'Finalizado').length;
+          const pendientes = Math.max(0, filas.length - finalizados);
+          setEstadoDonut({
+            titulo: 'Estado de órdenes',
+            enlace: '/mantenimiento',
+            totalEtiqueta: 'Órdenes totales',
+            segmentos: [
+              { etiqueta: 'En curso', valor: pendientes, color: '#1b76a6' },
+              { etiqueta: 'Finalizadas', valor: finalizados, color: '#2e7d47' },
+            ],
+          });
+        })
+        .catch(() => {});
+    }
+    return () => { vivo = false; };
+  }, [puede]);
+
+  const periodoActual = new Intl.DateTimeFormat('es-CR', {
+    month: 'long',
+    year: 'numeric',
   }).format(new Date());
-  const fechaCapitalizada = fechaTexto.charAt(0).toUpperCase() + fechaTexto.slice(1);
-
-  const resumen = datos.resumen || null;
-  const corte = resumen?.fecha_corte
-    ? formatearCelda('fecha_corte', resumen.fecha_corte).contenido
-    : null;
-
-  const acciones = ACCIONES.filter((a) => puede(a.permisos));
-  const accesos = PAGINAS.filter((p) => seccionesVisibles(p, puede).length > 0);
-  const verBitacora = puede([P.CONSULTAR_BITACORA]);
-  const actividad = Array.isArray(datos.bitacora) ? datos.bitacora.slice(0, 5) : [];
-
-  const kpis = puede(PERM_PAGOS)
-    ? [
-      {
-        titulo: 'Cartera por cobrar', destino: 'pagos', icono: 'factura', color: 'azul',
-        valor: resumen ? moneda(resumen.total_por_cobrar) : '—',
-        detalle: resumen ? `${resumen.facturas_pendientes} facturas pendientes` : 'No disponible',
-      },
-      {
-        titulo: 'Recaudado del mes', destino: 'pagos', icono: 'pago', color: 'verde',
-        valor: resumen ? moneda(resumen.recaudado_mes) : '—',
-        detalle: resumen ? `${resumen.pagos_mes} pagos aplicados` : 'No disponible',
-      },
-      {
-        titulo: 'Saldo vencido', destino: 'pagos', icono: 'alerta', color: 'rojo',
-        valor: resumen ? moneda(resumen.total_vencido) : '—',
-        detalle: resumen ? `${resumen.facturas_vencidas} facturas vencidas` : 'No disponible',
-      },
-      {
-        titulo: 'Conexiones morosas', destino: 'pagos', icono: 'usuarios', color: 'ambar',
-        valor: resumen ? resumen.conexiones_morosas : '—',
-        detalle: resumen ? `${resumen.conexiones_suspendidas} suspendidas` : 'No disponible',
-      },
-    ]
-    : INDICADORES
-      .filter((i) => puede(i.permisos) && Array.isArray(datos[i.clave]))
-      .slice(0, 4)
-      .map((i) => ({
-        titulo: i.titulo, destino: i.destino, icono: i.icono, color: i.color,
-        valor: i.valor(datos[i.clave]), detalle: i.detalle(datos[i.clave]),
-      }));
-
-  const alertas = [];
-  if (resumen) {
-    if (resumen.facturas_vencidas > 0) {
-      alertas.push({
-        titulo: 'Facturas vencidas', gravedad: 'rojo', icono: 'factura', destino: 'pagos',
-        cantidad: resumen.facturas_vencidas,
-        detalle: `${moneda(resumen.total_vencido)} de saldo vencido`,
-      });
-    }
-    if (resumen.conexiones_morosas > 0) {
-      alertas.push({
-        titulo: 'Conexiones morosas', gravedad: 'ambar', icono: 'usuarios', destino: 'pagos',
-        cantidad: resumen.conexiones_morosas,
-        detalle: `${resumen.conexiones_suspendidas} conexiones suspendidas`,
-      });
-    }
-  }
-
-  ALERTAS.forEach((def) => {
-    if (!puede(def.permisos)) return;
-    const filas = datos[def.clave];
-    if (!Array.isArray(filas)) return;
-    const cantidad = def.valor ? def.valor(filas) : filas.length;
-    if (cantidad > 0) {
-      alertas.push({
-        titulo: def.titulo, gravedad: def.gravedad, icono: def.icono,
-        destino: def.destino, cantidad, detalle: def.detalle(filas),
-      });
-    }
-  });
-
-  const orden = { rojo: 0, ambar: 1 };
-  alertas.sort((a, b) => (orden[a.gravedad] - orden[b.gravedad]) || (b.cantidad - a.cantidad));
-
-  const gruposCartera = [
-    { etiqueta: 'Al día', color: 'verde', monto: 0, incluye: (d) => d <= 0 },
-    { etiqueta: '1 a 30 días', color: 'ambar', monto: 0, incluye: (d) => d >= 1 && d <= 30 },
-    { etiqueta: '31 a 60 días', color: 'naranja', monto: 0, incluye: (d) => d >= 31 && d <= 60 },
-    { etiqueta: 'Más de 60 días', color: 'rojo', monto: 0, incluye: (d) => d > 60 },
-  ];
-  if (Array.isArray(datos.facturas)) {
-    datos.facturas.forEach((f) => {
-      const dias = Number(f.dias_atraso) || 0;
-      const grupo = gruposCartera.find((g) => g.incluye(dias));
-      if (grupo) grupo.monto += Number(f.saldo) || 0;
-    });
-  }
-  const totalCartera = gruposCartera.reduce((t, g) => t + g.monto, 0);
-  const carteraError = datos.facturas === null;
-  const sinCartera = !cargando && !carteraError && totalCartera === 0;
 
   return (
-    <>
-      <header className="panel-cabecera">
-        <div className="panel-bienvenida">
-          <p className="panel-fecha">
-            {fechaCapitalizada}
-            {corte ? ` · Corte ${corte}` : ''}
-          </p>
-          <h2>{`${saludo}, ${nombre}`}</h2>
-          <p className="panel-rol">{`${u.nombre_rol}${u.puesto ? ` · ${u.puesto}` : ''}`}</p>
-        </div>
-        {acciones.length ? (
-          <div className="panel-acciones">
-            {acciones.map((a) => (
-              <Link key={a.texto} className="boton accion-rapida" to={`/${a.destino}`}>
-                <Icono nombre={a.icono} /> {a.texto}
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </header>
+    <div className="dashboard-minimal">
+      {kpis.length ? (
+        <section className="kpi-fila">
+          {kpis.map((def) => <TarjetaKpi key={def.id} def={def} />)}
+        </section>
+      ) : null}
 
-      <section className="kpis" aria-label="Indicadores principales">
-        {cargando
-          ? Array.from({ length: 4 }).map((_, i) => <KpiEsqueleto key={i} />)
-          : kpis.map((k) => (
-            <Link key={k.titulo} className={`kpi kpi-${k.color}`} to={`/${k.destino}`}>
-              <span className="kpi-icono"><Icono nombre={k.icono} /></span>
-              <span className="kpi-cuerpo">
-                <small>{k.titulo}</small>
-                <strong>{k.valor}</strong>
-                <span>{k.detalle}</span>
-              </span>
-            </Link>
-          ))}
-      </section>
-
-      <div className="panel-grid">
-        {puede(PERM_PAGOS) ? (
-          <section className="tarjeta panel-col-7">
-            <div className="panel-titulo">
-              <div>
-                <h2>Antigüedad de la cartera</h2>
-                <p className="descripcion">Saldo pendiente según los días de atraso.</p>
-              </div>
-              <Link className="panel-enlace" to="/pagos">Ver cartera →</Link>
-            </div>
-            {cargando ? <ListaEsqueleto filas={4} /> : carteraError ? (
-              <div className="panel-vacio error">
-                <Icono nombre="alerta" />
-                <span>No se pudo cargar la cartera.</span>
-              </div>
-            ) : sinCartera ? (
-              <div className="panel-vacio">
-                <Icono nombre="check" />
-                <span>No hay cartera pendiente registrada.</span>
-              </div>
-            ) : (
-              <DonaCartera tramos={gruposCartera} total={totalCartera} />
-            )}
-          </section>
-        ) : null}
-
-        <section className={`tarjeta ${puede(PERM_PAGOS) ? 'panel-col-5' : 'panel-col-12'}`}>
-          <div className="panel-titulo">
+      <div className="bento-grid">
+        <section className="bento-card bento-principal">
+          <div className="bento-cabecera">
             <div>
-              <h2>Alertas y pendientes</h2>
-              <p className="descripcion">Lo que requiere atención hoy.</p>
+              <div className="bento-titulo-linea">
+                <Icono nombre="grafico" />
+                <h2>Actividad operativa y financiera</h2>
+              </div>
+              <p className="bento-subtitulo">{vista?.subtitulo}</p>
             </div>
-            {!cargando && alertas.length ? <span className="contador">{alertas.length}</span> : null}
+            <div className="periodo-pill">
+              <span>{periodoActual}</span>
+              <Icono nombre="calendario" />
+            </div>
           </div>
-          {cargando ? <ListaEsqueleto filas={4} /> : alertas.length ? (
-            <div className="alerta-lista">
-              {alertas.map((a) => (
-                <Link key={a.titulo} className="alerta-item" to={`/${a.destino}`}>
-                  <span className={`alerta-icono ${a.gravedad}`}><Icono nombre={a.icono} /></span>
-                  <span className="alerta-texto">
-                    <strong>{a.titulo}</strong>
-                    <span>{a.detalle}</span>
-                  </span>
-                  <span className={`alerta-cantidad ${a.gravedad}`}>{a.cantidad}</span>
+
+          {vistas.length > 1 ? (
+            <div className="pastillas-filtro">
+              {vistas.map((v, idx) => (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={idx === vistaActiva ? 'activa' : ''}
+                  onClick={() => setVistaActiva(idx)}
+                >
+                  {v.etiqueta}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {cargandoGrafico ? (
+            <div className="lienzo-grafico-vacio">
+              <div className="caja-punteada">
+                <span>Cargando métricas del periodo…</span>
+              </div>
+            </div>
+          ) : (
+            <GraficoColumnas
+              filas={datosGrafico}
+              etiqueta={vista.etiquetaFila}
+              campo={vista.campo}
+              formato={vista.formato}
+              mensajeVacio={vista.vacio}
+              pie={vista.pie}
+            />
+          )}
+        </section>
+
+        <div className="bento-lateral">
+          <section className="bento-card">
+            <div className="bento-cabecera-compacta">
+              <div className="bento-titulo-linea">
+                <Icono nombre="usuarios" />
+                <h2>{estadoDonut.titulo}</h2>
+              </div>
+              <Link className="enlace-sutil" to={estadoDonut.enlace}>Ver todos</Link>
+            </div>
+            <GraficoDonut
+              segmentos={estadoDonut.segmentos}
+              totalEtiqueta={estadoDonut.totalEtiqueta}
+            />
+          </section>
+
+          <section className="bento-card">
+            <div className="bento-cabecera-compacta">
+              <h2>Acceso rápido</h2>
+              <span className="etiqueta-sutil">{`${accesos.length} módulos`}</span>
+            </div>
+            <div className="acceso-rapido-grid">
+              {accesos.map((p) => (
+                <Link key={p.id} className="boton-acceso-rapido" to={`/${p.id}`}>
+                  <Icono nombre={p.icono} />
+                  <span>{p.titulo}</span>
                 </Link>
               ))}
             </div>
-          ) : (
-            <div className="panel-vacio">
-              <Icono nombre="check" />
-              <span>Sin alertas pendientes. Todo en orden.</span>
-            </div>
-          )}
-        </section>
-      </div>
-
-      <div className="panel-grid">
-        <section className={`tarjeta ${verBitacora ? 'panel-col-7' : 'panel-col-12'}`}>
-          <div className="panel-titulo">
-            <div>
-              <h2>Módulos</h2>
-              <p className="descripcion">Acceso rápido a las áreas disponibles para su rol.</p>
-            </div>
-          </div>
-          <div className="modulo-lista">
-            {accesos.map((p) => (
-              <Link key={p.id} className="modulo-item" to={`/${p.id}`}>
-                <span className="modulo-icono"><Icono nombre={p.icono} /></span>
-                <span className="modulo-texto">
-                  <strong>{p.titulo}</strong>
-                  <span>{seccionesVisibles(p, puede).map((s) => s.pestana || s.titulo).join(' · ')}</span>
-                </span>
-                <Icono nombre="flecha" />
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {verBitacora ? (
-          <section className="tarjeta panel-col-5">
-            <div className="panel-titulo">
-              <div>
-                <h2>Actividad reciente</h2>
-                <p className="descripcion">Últimos movimientos registrados.</p>
-              </div>
-              <Link className="panel-enlace" to="/seguridad">Ver bitácora →</Link>
-            </div>
-            {cargando ? <ListaEsqueleto filas={4} /> : actividad.length ? (
-              <ul className="actividad-lista">
-                {actividad.map((a) => (
-                  <li key={a.id_bitacora} className="actividad-item">
-                    <span className="actividad-punto" />
-                    <span className="actividad-texto">
-                      <strong>{a.usuario || 'Sistema'} · {a.accion}</strong>
-                      <span>{a.descripcion || a.tabla_afectada || 'Sin descripción'}</span>
-                    </span>
-                    <span className="actividad-fecha">
-                      {formatearCelda('fecha_registro', a.fecha_registro).contenido}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <div className="panel-vacio">
-                <Icono nombre="reloj" />
-                <span>Sin movimientos recientes.</span>
-              </div>
-            )}
           </section>
-        ) : null}
+        </div>
       </div>
-    </>
+    </div>
   );
 }
