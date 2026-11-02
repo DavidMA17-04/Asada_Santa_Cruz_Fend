@@ -12,6 +12,7 @@ export function GraficoDonut({
 }) {
   const limpios = segmentos.filter((s) => Number(s.valor) >= 0);
   const total = limpios.reduce((acc, s) => acc + (Number(s.valor) || 0), 0);
+  const totalTexto = numero(total);
   const radio = 42;
   const circunferencia = 2 * Math.PI * radio;
 
@@ -78,8 +79,8 @@ export function GraficoDonut({
           )) : null}
         </svg>
         {tipo === 'pastel' ? null : (
-          <div className="donut-centro">
-            <strong>{numero(total)}</strong>
+          <div className={`donut-centro${totalTexto.length > 8 ? ' donut-centro-compacto' : ''}`}>
+            <strong title={totalTexto}>{totalTexto}</strong>
             <small>{totalEtiqueta}</small>
           </div>
         )}
@@ -89,8 +90,8 @@ export function GraficoDonut({
         {arcos.map((a) => (
           <div className="donut-item" key={a.etiqueta}>
             <span className="donut-punto" style={{ background: a.color }} />
-            <span className="donut-nombre">{a.etiqueta}</span>
-            <strong className="donut-valor">{numero(a.valor)}</strong>
+            <span className="donut-nombre" title={a.etiqueta}>{a.etiqueta}</span>
+            <strong className="donut-valor" title={numero(a.valor)}>{numero(a.valor)}</strong>
             <small className="donut-pct">{`${a.porcentaje}%`}</small>
           </div>
         ))}
@@ -99,7 +100,20 @@ export function GraficoDonut({
   );
 }
 
-/** Gráfico de columnas verticales minimalista con contenedor punteado cuando está vacío. */
+/** Abrevia montos grandes para que quepan en una columna (el valor exacto va en el tooltip). */
+const abreviar = (valor) => {
+  const n = Number(valor) || 0;
+  const abs = Math.abs(n);
+  const decimal = (x) => x.toFixed(1).replace('.', ',');
+  if (abs >= 1e9) return `${decimal(n / 1e9)} mil M`;
+  if (abs >= 1e6) return `${decimal(n / 1e6)} M`;
+  if (abs >= 1e5) return `${Math.round(n / 1e3)} k`;
+  if (abs >= 1e3) return `${decimal(n / 1e3)} k`;
+  return String(Math.round(n));
+};
+
+/** Gráfico de columnas verticales minimalista con contenedor punteado cuando está vacío.
+    La barra usa altura porcentual, así se adapta a cualquier contenedor sin desbordarse. */
 export function GraficoColumnas({
   filas = [],
   etiqueta,
@@ -108,12 +122,14 @@ export function GraficoColumnas({
   color = 'linear-gradient(180deg, #1b76a6 0%, #144272 100%)',
   mensajeVacio = 'No hay registros para este periodo.',
   pie = 'Periodo / Categoría',
+  maximo = 12,
 }) {
-  const datos = filas.slice(0, 12).map((f) => ({
+  const datos = filas.slice(0, maximo).map((f) => ({
     nombre: typeof etiqueta === 'function' ? etiqueta(f) : String(f[etiqueta] ?? '—'),
     valor: Number(f[campo]) || 0,
   }));
   const max = Math.max(0, ...datos.map((d) => d.valor));
+  const esMoneda = formato === moneda;
 
   if (!datos.length || max === 0) {
     return (
@@ -130,17 +146,19 @@ export function GraficoColumnas({
     <div className="lienzo-columnas">
       <div className="columnas-area">
         {datos.map((d, i) => {
-          const altura = Math.max(8, Math.round((d.valor / max) * 140));
+          const altura = d.valor > 0 ? Math.max(3, Math.round((d.valor / max) * 100)) : 0;
+          const completo = formato(d.valor);
+          const texto = completo.length > 9 ? `${esMoneda ? '₡' : ''}${abreviar(d.valor)}` : completo;
           return (
-            <div className="columna-item" key={`${d.nombre}-${i}`} title={`${d.nombre}: ${formato(d.valor)}`}>
-              <span className="columna-valor">{formato(d.valor)}</span>
+            <div className="columna-item" key={`${d.nombre}-${i}`} title={`${d.nombre}: ${completo}`}>
+              <span className="columna-valor" title={completo}>{texto}</span>
               <div className="columna-pista">
                 <div
                   className="columna-barra"
-                  style={{ height: `${altura}px`, background: color }}
+                  style={{ height: `${altura}%`, background: color }}
                 />
               </div>
-              <small className="columna-etiqueta">{d.nombre}</small>
+              <small className="columna-etiqueta" title={d.nombre}>{d.nombre}</small>
             </div>
           );
         })}
@@ -181,7 +199,12 @@ export function GraficoBarras({ filas, etiqueta, series, formato = numero }) {
               const valor = Number(f[s.campo]) || 0;
               return (
                 <div className="grafico-barra" key={s.campo} title={`${s.nombre}: ${formato(valor)}`}>
-                  <div className={`serie-${i}`} style={{ width: `${Math.max(2, (valor / maximo) * 82)}%` }} />
+                  <span className="grafico-pista">
+                    <span
+                      className={`grafico-relleno serie-${i}`}
+                      style={{ width: `${Math.max(2, (valor / maximo) * 100)}%` }}
+                    />
+                  </span>
                   <strong>{formato(valor)}</strong>
                 </div>
               );
@@ -264,11 +287,12 @@ export function ResumenVisualDatos({ filas = [] }) {
             <small>Principales registros</small>
           </div>
           <GraficoColumnas
-            filas={filas.slice(0, 8)}
+            filas={filas.slice(0, 6)}
             etiqueta={analisis.campoEtiqueta}
             campo={analisis.campoNum}
             formato={analisis.esMoneda ? moneda : numero}
             pie={etiquetaDe(analisis.campoEtiqueta)}
+            maximo={6}
           />
         </div>
       ) : null}

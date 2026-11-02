@@ -2,6 +2,7 @@ const TRAZOS = {
   gota: '<path d="M12 2.7C8.4 7.6 6 11 6 14.5a6 6 0 0 0 12 0C18 11 15.6 7.6 12 2.7z"/>',
   inicio: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
   usuarios: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/>',
+  perfil: '<circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/>',
   medidor: '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-4M8 5.5V3h8v2.5"/>',
   factura: '<path d="M6 2.5h12v19l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
   pago: '<rect x="2.5" y="5.5" width="19" height="13" rx="2"/><path d="M2.5 10h19M6.5 15h4"/>',
