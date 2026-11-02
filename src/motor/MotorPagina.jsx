@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, obtener, sesion } from '../api.js';
-import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, Icono, ResumenVisualDatos, Tabla } from '../ui/index.js';
+import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, GraficoDonut, Icono, ResumenVisualDatos, Tabla } from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
 
 const resolver = (valor, ...args) => (typeof valor === 'function' ? valor(...args) : valor);
@@ -9,6 +9,19 @@ const permitidos = (lista = []) => lista.filter((x) => sesion.puede(x.permisos |
 const camposDe = (campos, fila) => permitidos(resolver(campos, fila) || []);
 
 const TEXTO_SCRIPT = /^(RESTORE|BACKUP|DBCC|ALTER|USE|--)/m;
+
+function segmentosPastel(filas, config) {
+  const conteos = new Map((config.estados || []).map((estado) => [estado, 0]));
+  filas.forEach((fila) => {
+    const estado = fila[config.campo] || 'Sin estado';
+    conteos.set(estado, (conteos.get(estado) || 0) + 1);
+  });
+  return [...conteos.entries()].map(([etiqueta, valor]) => ({
+    etiqueta,
+    valor,
+    color: config.colores?.[etiqueta],
+  }));
+}
 
 function BloqueTabla({ filas, opciones = {} }) {
   if (filas.length === 1 && Object.keys(filas[0]).length === 1) {
@@ -173,6 +186,17 @@ function ContenidoConsulta({ def, r, recargar }) {
         ))
       ) : (
         <>
+          {def.graficoPastel ? (
+            <div className="tarjeta-mini-grafico">
+              <div className="tarjeta-mini-cabecera">
+                <strong>{def.graficoPastel.titulo}</strong>
+              </div>
+              <GraficoDonut
+                segmentos={segmentosPastel(r.datos || [], def.graficoPastel)}
+                totalEtiqueta={def.graficoPastel.totalEtiqueta || 'Total'}
+              />
+            </div>
+          ) : null}
           {def.grafico ? (
             <GraficoBarras filas={r.datos || []} {...def.grafico} />
           ) : (

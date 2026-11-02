@@ -74,7 +74,7 @@ export const ACCIONES_CONEXION = [
     exito: () => 'Tarifa asignada.',
   },
   {
-    texto: 'Medidor', permisos: GESTIONAR,
+    texto: 'Agregar medidor', permisos: GESTIONAR,
     titulo: (f) => `Asignar medidor a la conexión ${f.id_conexion}`,
     ruta: (f) => `/conexiones/${f.id_conexion}/medidor`,
     visible: (f) => !f.estado || f.estado === 'Activa',
@@ -109,7 +109,7 @@ export default {
       titulo: 'Abonados',
       permisos: CONSULTAR,
       ruta: '/abonados',
-      descripcion: 'Personas físicas y jurídicas que reciben el servicio. Desde cada abonado se administran sus conexiones.',
+      descripcion: 'Personas físicas y jurídicas que reciben el servicio. En cada uno se administran sus conexiones y medidores.',
       filtros: [
         { nombre: 'tipo_abonado', etiqueta: 'Tipo', opciones: TIPO_ABONADO },
         { nombre: 'identificacion', etiqueta: 'Identificación' },

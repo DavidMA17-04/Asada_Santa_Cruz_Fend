@@ -8,6 +8,7 @@ export function GraficoDonut({
   segmentos = [],
   totalEtiqueta = 'Total',
   colores = PALETA,
+  tipo = 'dona',
 }) {
   const limpios = segmentos.filter((s) => Number(s.valor) >= 0);
   const total = limpios.reduce((acc, s) => acc + (Number(s.valor) || 0), 0);
@@ -20,12 +21,15 @@ export function GraficoDonut({
     const proporcion = total > 0 ? valor / total : 0;
     const longitud = proporcion * circunferencia;
     const offset = -acumulado;
+    const inicio = total > 0 ? (acumulado / total) * 2 * Math.PI - Math.PI / 2 : 0;
     acumulado += longitud;
     return {
       ...s,
       valor,
       porcentaje: total > 0 ? Math.round(proporcion * 100) : 0,
       color: s.color || colores[i % colores.length],
+      proporcion,
+      inicio,
       dasharray: `${longitud} ${circunferencia}`,
       dashoffset: offset,
     };
@@ -35,34 +39,50 @@ export function GraficoDonut({
     <div className="donut-contenedor">
       <div className="donut-svg-envoltura">
         <svg viewBox="0 0 110 110" className="donut-svg">
-          <circle
-            cx="55"
-            cy="55"
-            r={radio}
-            fill="none"
-            stroke="var(--borde-suave)"
-            strokeWidth="12"
-          />
-          {total > 0 ? arcos.map((a) => (
+          {tipo === 'pastel' ? null : (
             <circle
-              key={a.etiqueta}
               cx="55"
               cy="55"
               r={radio}
               fill="none"
-              stroke={a.color}
+              stroke="var(--borde-suave)"
               strokeWidth="12"
-              strokeDasharray={a.dasharray}
-              strokeDashoffset={a.dashoffset}
-              strokeLinecap="butt"
-              transform="rotate(-90 55 55)"
             />
+          )}
+          {total > 0 ? arcos.map((a) => (
+            tipo === 'pastel' ? (
+              a.proporcion === 1 ? (
+                <circle key={a.etiqueta} cx="55" cy="55" r="50" fill={a.color} />
+              ) : (
+                <path
+                  key={a.etiqueta}
+                  d={`M 55 55 L ${55 + 50 * Math.cos(a.inicio)} ${55 + 50 * Math.sin(a.inicio)} A 50 50 0 ${a.proporcion > 0.5 ? 1 : 0} 1 ${55 + 50 * Math.cos(a.inicio + a.proporcion * 2 * Math.PI)} ${55 + 50 * Math.sin(a.inicio + a.proporcion * 2 * Math.PI)} Z`}
+                  fill={a.color}
+                />
+              )
+            ) : (
+              <circle
+                key={a.etiqueta}
+                cx="55"
+                cy="55"
+                r={radio}
+                fill="none"
+                stroke={a.color}
+                strokeWidth="12"
+                strokeDasharray={a.dasharray}
+                strokeDashoffset={a.dashoffset}
+                strokeLinecap="butt"
+                transform="rotate(-90 55 55)"
+              />
+            )
           )) : null}
         </svg>
-        <div className="donut-centro">
-          <strong>{numero(total)}</strong>
-          <small>{totalEtiqueta}</small>
-        </div>
+        {tipo === 'pastel' ? null : (
+          <div className="donut-centro">
+            <strong>{numero(total)}</strong>
+            <small>{totalEtiqueta}</small>
+          </div>
+        )}
       </div>
 
       <div className="donut-leyenda">

@@ -1324,6 +1324,95 @@ a {
   margin-bottom: 18px;
 }
 
+.tarjeta {
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: inset 0 3px 0 var(--acento), var(--sombra);
+}
+
+.encabezado-seccion {
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 18px;
+}
+
+.encabezado-seccion h2 {
+  font-size: 21px;
+  letter-spacing: -0.025em;
+}
+
+.encabezado-seccion .descripcion {
+  max-width: 680px;
+  margin-top: 6px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.herramientas {
+  gap: 9px;
+}
+
+.herramientas .boton {
+  min-height: 38px;
+}
+
+.contenedor-filtros {
+  padding: 16px 18px 18px;
+  border-radius: 15px;
+  background: linear-gradient(145deg, var(--superficie-2), var(--superficie) 72%);
+}
+
+.form-filtros-grid {
+  gap: 14px 16px;
+}
+
+.resultado {
+  margin-top: 4px;
+}
+
+.tabla-barra {
+  gap: 12px;
+  margin-bottom: 13px;
+}
+
+.buscador-tabla {
+  min-width: min(320px, 100%);
+}
+
+.tabla-envoltura {
+  border-radius: 14px;
+}
+
+.tabla-envoltura th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.035em;
+}
+
+.tabla-envoltura tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+@media (max-width: 640px) {
+  .tarjeta {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .encabezado-seccion h2 {
+    font-size: 19px;
+  }
+
+  .contenedor-filtros {
+    padding: 13px;
+  }
+
+  .buscador-tabla {
+    min-width: 100%;
+  }
+}
+
 .tarjeta>h2 {
   font-size: 16px;
   margin-bottom: 4px;
