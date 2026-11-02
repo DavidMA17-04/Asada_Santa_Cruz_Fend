@@ -100,6 +100,8 @@ function CampoSelect({ campo, value, onChange, id }) {
 }
 
 function Control({ campo, value, onChange, id }) {
+  const [verContrasena, setVerContrasena] = useState(false);
+
   if (campo.tipo === 'textarea') {
     return (
       <textarea
@@ -126,6 +128,34 @@ function Control({ campo, value, onChange, id }) {
   if (campo.opciones || campo.catalogo) {
     return <CampoSelect campo={campo} value={value} onChange={onChange} id={id} />;
   }
+  if (campo.tipo === 'password') {
+    return (
+      <span className="campo-password">
+        <input
+          id={id}
+          name={campo.nombre}
+          type={verContrasena ? 'text' : 'password'}
+          required={campo.requerido}
+          value={value ?? ''}
+          maxLength={campo.max}
+          placeholder={campo.marcador || 'Escribir…'}
+          autoComplete={campo.autocomplete ?? 'new-password'}
+          autoFocus={campo.autoFocus}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <button
+          type="button"
+          className="boton-ojo"
+          aria-label={verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          aria-pressed={verContrasena}
+          title={verContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+          onClick={() => setVerContrasena((v) => !v)}
+        >
+          <Icono nombre={verContrasena ? 'ojo-off' : 'ojo'} />
+        </button>
+      </span>
+    );
+  }
   return (
     <input
       id={id}
@@ -138,7 +168,8 @@ function Control({ campo, value, onChange, id }) {
       maxLength={campo.tipo === 'number' ? undefined : campo.max}
       step={campo.paso ?? (campo.tipo === 'number' ? 'any' : undefined)}
       placeholder={campo.marcador || 'Escribir…'}
-      autoComplete={campo.autocomplete ?? (campo.tipo === 'password' ? 'new-password' : 'off')}
+      autoComplete={campo.autocomplete ?? 'off'}
+      autoFocus={campo.autoFocus}
       onChange={(e) => onChange(e.target.value)}
     />
   );
@@ -151,6 +182,7 @@ export const Formulario = forwardRef(function Formulario({
   alEnviar,
   alCancelar,
   filtros = false,
+  extras = null,
 }, ref) {
   const baseId = useId();
   const visibles = useMemo(() => campos.filter((c) => c.tipo !== 'oculto'), [campos]);
@@ -212,7 +244,9 @@ export const Formulario = forwardRef(function Formulario({
 
   const enviar = (
     <button className="boton primario" type="submit" disabled={enviando}>
-      {filtros ? <Icono nombre="buscar" /> : null}
+      {enviando
+        ? <span className="spinner" aria-hidden="true" />
+        : filtros ? <Icono nombre="buscar" /> : null}
       <span>{enviando ? 'Procesando…' : textoEnviar}</span>
     </button>
   );
@@ -269,13 +303,15 @@ export const Formulario = forwardRef(function Formulario({
         })}
       </div>
 
+      {extras}
+      {error ? <div className="error-form" role="alert">{error}</div> : null}
+
       {!filtros ? (
         <div className="form-pie">
-          {alCancelar ? <button className="boton" type="button" onClick={alCancelar}>Cancelar</button> : null}
           {enviar}
+          {alCancelar ? <button className="boton" type="button" onClick={alCancelar}>Cancelar</button> : null}
         </div>
       ) : null}
-      {error ? <div className="error-form" role="alert">{error}</div> : null}
     </form>
   );
 });

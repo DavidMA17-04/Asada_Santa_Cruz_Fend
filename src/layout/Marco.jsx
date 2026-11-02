@@ -10,6 +10,14 @@ import { abrirModal, avisar, Formulario, Icono, moneda, suscribirNotificaciones 
 
 const suma = (filas, campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
 
+// Fecha y hora del último acceso (la API la entrega en ISO UTC).
+const fechaHora = (valor) => {
+  if (!valor) return '';
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return String(valor);
+  return new Intl.DateTimeFormat('es-CR', { dateStyle: 'short', timeStyle: 'short' }).format(d);
+};
+
 const FUENTES_ALERTAS = [
   {
     id: 'abonados-conexiones',
@@ -221,7 +229,7 @@ export function Marco() {
   const navigate = useNavigate();
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [colapsado, setColapsado] = useState(false);
-  const [menuUsuario, setMenuUsuario] = useState(false);
+  const [menuPerfil, setMenuPerfil] = useState(false);
   const [menuNotificaciones, setMenuNotificaciones] = useState(false);
   const [filtroNotif, setFiltroNotif] = useState('todas');
   const [temaOscuro, setTemaOscuro] = useState(() => localStorage.getItem('asada_tema') === 'oscuro');
@@ -255,11 +263,18 @@ export function Marco() {
 
   useEffect(() => {
     const cerrar = () => {
-      setMenuUsuario(false);
+      setMenuPerfil(false);
       setMenuNotificaciones(false);
     };
+    const cerrarConEscape = (ev) => {
+      if (ev.key === 'Escape') cerrar();
+    };
     document.addEventListener('click', cerrar);
-    return () => document.removeEventListener('click', cerrar);
+    document.addEventListener('keydown', cerrarConEscape);
+    return () => {
+      document.removeEventListener('click', cerrar);
+      document.removeEventListener('keydown', cerrarConEscape);
+    };
   }, []);
 
   const cargarNotificaciones = useCallback(async () => {
@@ -334,6 +349,32 @@ export function Marco() {
     try { await api('POST', '/auth/logout'); } catch { /* el token se descarta igual */ }
     borrar();
     navigate('/', { replace: true });
+  }
+
+  function verPerfil() {
+    const modal = abrirModal('Mi perfil', (
+      <div className="perfil-detalle">
+        <div className="perfil-cabecera">
+          <span className="avatar avatar-grande">{iniciales}</span>
+          <div className="perfil-datos">
+            <strong>{u.nombre_empleado || u.nombre_usuario}</strong>
+            <small>{`@${u.nombre_usuario}`}</small>
+          </div>
+        </div>
+
+        <dl className="perfil-info">
+          <dt>Rol</dt>
+          <dd>{u.nombre_rol}</dd>
+          {u.puesto ? (<><dt>Puesto</dt><dd>{u.puesto}</dd></>) : null}
+          {u.id_empleado ? (<><dt>Empleado</dt><dd>{`#${u.id_empleado}`}</dd></>) : null}
+          {u.fecha_ultimo_acceso ? (<><dt>Último acceso</dt><dd>{fechaHora(u.fecha_ultimo_acceso)}</dd></>) : null}
+        </dl>
+
+        <div className="perfil-detalle-pie">
+          <button type="button" className="boton" onClick={() => modal.cerrar()}>Cerrar</button>
+        </div>
+      </div>
+    ), { tamano: 'chico' });
   }
 
   const subActual = actualPagina.secciones
@@ -441,12 +482,53 @@ export function Marco() {
           })}
         </nav>
 
-        <div className="lateral-pie">
-          <span className="punto-activo" />
-          <div className="lateral-texto-marca">
-            <strong>{u.nombre_rol}</strong>
-            <small>{u.nombre_usuario}</small>
+        <div className="lateral-perfil" onClick={(ev) => ev.stopPropagation()}>
+          <div className={`perfil-menu${menuPerfil ? '' : ' oculto'}`} role="menu" aria-label="Mi perfil y sesión">
+            <button
+              type="button"
+              className="perfil-accion"
+              role="menuitem"
+              onClick={() => { setMenuPerfil(false); verPerfil(); }}
+            >
+              <Icono nombre="usuarios" />
+              Mi perfil
+            </button>
+            <button
+              type="button"
+              className="perfil-accion"
+              role="menuitem"
+              onClick={() => { setMenuPerfil(false); cambiarContrasena(); }}
+            >
+              <Icono nombre="llave" />
+              Cambiar contraseña
+            </button>
+            <button
+              type="button"
+              className="perfil-accion peligro"
+              role="menuitem"
+              onClick={cerrarSesion}
+            >
+              <Icono nombre="salir" />
+              Cerrar sesión
+            </button>
           </div>
+
+          <button
+            type="button"
+            className={`perfil-trigger${menuPerfil ? ' activo' : ''}`}
+            aria-haspopup="menu"
+            aria-expanded={menuPerfil}
+            title="Mi perfil y sesión"
+            onClick={() => {
+              setMenuNotificaciones(false);
+              if (colapsado) setColapsado(false);
+              setMenuPerfil((v) => !v);
+            }}
+          >
+            <Icono nombre="perfil" className="perfil-icono" />
+            <span className="perfil-trigger-texto">Mi perfil</span>
+            <Icono nombre="chevron" className="perfil-flecha" />
+          </button>
         </div>
       </aside>
 
@@ -492,7 +574,7 @@ export function Marco() {
                 type="button"
                 title="Centro de notificaciones del sistema"
                 onClick={() => {
-                  setMenuUsuario(false);
+                  setMenuPerfil(false);
                   setMenuNotificaciones((v) => !v);
                   if (!menuNotificaciones) cargarNotificaciones();
                 }}
@@ -589,32 +671,12 @@ export function Marco() {
                 </div>
               </div>
             </div>
-
-            <div className="usuario">
-              <button
-                className="usuario-boton"
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuNotificaciones(false);
-                  setMenuUsuario((v) => !v);
-                }}
-              >
-                <span className="avatar">{iniciales}</span>
-                <span className="usuario-datos">
-                  <strong>{u.nombre_empleado || u.nombre_usuario}</strong>
-                  <small>{u.nombre_rol}</small>
-                </span>
-              </button>
-              <div className={`usuario-menu${menuUsuario ? '' : ' oculto'}`}>
-                <button
-                  type="button"
-                  onClick={() => { setMenuUsuario(false); cambiarContrasena(); }}
-                >
-                  Cambiar mi contraseña
-                </button>
-                <button type="button" onClick={cerrarSesion}>Cerrar sesión</button>
-              </div>
+            <div className="usuario" title={`${u.nombre_empleado || u.nombre_usuario} - ${u.nombre_rol}`}>
+              <span className="avatar">{iniciales}</span>
+              <span className="usuario-datos">
+                <strong>{u.nombre_empleado || u.nombre_usuario}</strong>
+                <small>{u.nombre_rol}</small>
+              </span>
             </div>
           </div>
         </header>

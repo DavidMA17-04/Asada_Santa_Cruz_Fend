@@ -80,7 +80,6 @@ export function UiProvider({ children }) {
         <div>
           <p style={{ margin: 0 }}>{mensaje}</p>
           <div className="form-pie">
-            <button className="boton" type="button" onClick={() => handle.cerrar()}>Cancelar</button>
             <button
               className={`boton ${peligro ? 'peligro lleno' : 'primario'}`}
               type="button"
@@ -88,6 +87,7 @@ export function UiProvider({ children }) {
             >
               {textoAceptar}
             </button>
+            <button className="boton" type="button" onClick={() => handle.cerrar()}>Cancelar</button>
           </div>
         </div>
       ), { tamano: 'chico', alCerrar: () => resolver(respuesta) });
