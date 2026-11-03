@@ -3,7 +3,7 @@ import { Icono } from '../../ui/Icono.jsx';
 
 export function Pagination({
   totalRegistros = 0,
-  paginaActual = 0, // 0-based
+  paginaActual = 0,
   porPagina = 25,
   alCambiarPagina,
   className = '',
@@ -11,7 +11,6 @@ export function Pagination({
   const totalPaginas = Math.max(1, Math.ceil(totalRegistros / porPagina));
   const paginaSegura = Math.min(Math.max(0, paginaActual), totalPaginas - 1);
 
-  // Generar páginas numeradas si hay múltiples páginas
   const numerosPagina = useMemo(() => {
     if (totalPaginas <= 1) return [];
     const paginas = [];
@@ -32,37 +31,29 @@ export function Pagination({
   if (totalRegistros <= 0) return null;
 
   return (
-    <div
-      className={`flex flex-col sm:flex-row items-center justify-between gap-3 pt-3.5 pb-2 text-xs select-none ${className}`}
-    >
-      {/* 2. Simplificación del Texto de Paginación: Únicamente la píldora informativa */}
-      <div className="flex items-center">
-        <span className="px-3.5 py-1.5 rounded-full border border-slate-700/50 bg-slate-900/60 text-slate-300 font-medium tracking-wide shadow-xs">
-          Página <strong className="text-white font-semibold">{paginaSegura + 1}</strong> de <strong className="text-white font-semibold">{totalPaginas}</strong>
-        </span>
-      </div>
+    <div className={`paginacion-barra ${className}`.trim()}>
+      <span className="paginacion-info">
+        Página <strong>{paginaSegura + 1}</strong> de <strong>{totalPaginas}</strong>
+      </span>
 
-      {/* 3. Rediseño y Mejora del Componente de Paginación (Botones) */}
       {totalPaginas > 1 ? (
-        <div className="flex items-center gap-1.5">
-          {/* Botón Anterior */}
+        <div className="paginacion-controles">
           <button
             type="button"
+            className="paginacion-nav"
             disabled={paginaSegura === 0}
             onClick={() => alCambiarPagina?.(paginaSegura - 1)}
-            className="px-3 py-1.5 rounded-xl border border-slate-700/50 bg-slate-900/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 hover:border-sky-500/50 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium text-xs shadow-xs"
             title="Página anterior"
           >
             <Icono nombre="izquierda" tamano={13} />
-            <span className="hidden sm:inline">Anterior</span>
+            <span className="paginacion-nav-texto">Anterior</span>
           </button>
 
-          {/* Números de página */}
-          <div className="flex items-center gap-1 mx-1">
+          <div className="paginacion-numeros">
             {numerosPagina.map((num, i) => {
               if (num === '...') {
                 return (
-                  <span key={`puntos-${i}`} className="px-2 text-slate-500 font-medium select-none">
+                  <span key={`puntos-${i}`} className="paginacion-puntos">
                     …
                   </span>
                 );
@@ -72,11 +63,9 @@ export function Pagination({
                 <button
                   key={num}
                   type="button"
+                  className={`paginacion-num${activo ? ' activo' : ''}`}
                   onClick={() => alCambiarPagina?.(num)}
-                  className={`w-8 h-8 rounded-xl text-xs font-semibold transition-all flex items-center justify-center cursor-pointer shadow-xs
-                    ${activo
-                      ? 'bg-sky-600 text-white shadow-sm border border-sky-500/60'
-                      : 'bg-slate-900/60 border border-slate-700/50 text-slate-300 hover:bg-slate-800 hover:border-sky-500/50 hover:text-white'}`}
+                  aria-current={activo ? 'page' : undefined}
                 >
                   {num + 1}
                 </button>
@@ -84,15 +73,14 @@ export function Pagination({
             })}
           </div>
 
-          {/* Botón Siguiente */}
           <button
             type="button"
+            className="paginacion-nav"
             disabled={paginaSegura >= totalPaginas - 1}
             onClick={() => alCambiarPagina?.(paginaSegura + 1)}
-            className="px-3 py-1.5 rounded-xl border border-slate-700/50 bg-slate-900/60 text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-800 hover:border-sky-500/50 hover:text-white transition-all flex items-center justify-center gap-1.5 cursor-pointer font-medium text-xs shadow-xs"
             title="Página siguiente"
           >
-            <span className="hidden sm:inline">Siguiente</span>
+            <span className="paginacion-nav-texto">Siguiente</span>
             <Icono nombre="derecha" tamano={13} />
           </button>
         </div>

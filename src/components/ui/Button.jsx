@@ -26,30 +26,27 @@ export function Button({
       break;
 
     case 'view':
-      // Botón Ver: estilo outline / neutro redondeado con icono de ojo
-      estiloVariante = 'rounded-full border border-slate-600/50 bg-slate-800/40 text-slate-300 hover:bg-slate-700/60 hover:text-white hover:border-slate-500 px-3 py-1 text-xs shadow-2xs';
+      estiloVariante = 'boton-accion-ver';
       iconoAuto = iconoAuto || 'ojo';
       tamanoIcono = 13;
       break;
 
     case 'edit':
-      // Botón Editar: estilo outline / azul suave con icono de lápiz
-      estiloVariante = 'rounded-full border border-sky-400/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:border-sky-400/70 px-3 py-1 text-xs shadow-2xs';
+      estiloVariante = 'boton-accion-editar';
       iconoAuto = iconoAuto || 'editar';
       tamanoIcono = 13;
       break;
 
     case 'delete':
     case 'danger':
-      // Botón Eliminar: estilo pill con borde o fondo rojizo translúcido
-      estiloVariante = 'rounded-full border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/60 px-3 py-1 text-xs shadow-2xs';
+      estiloVariante = 'boton-accion-peligro';
       iconoAuto = iconoAuto || 'peligro';
       tamanoIcono = 13;
       break;
 
     case 'export':
-      // Botón Exportar CSV con diseño redondeado e icono de descarga
-      estiloVariante = 'rounded-full border border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400 hover:bg-sky-500/20 hover:border-sky-400 shadow-xs px-3.5 py-1.5 text-xs';
+      // Clase CSS propia: el color global de button gana sobre utilidades Tailwind
+      estiloVariante = 'boton-exportar shadow-xs';
       iconoAuto = iconoAuto || 'descargar';
       tamanoIcono = 13;
       break;

@@ -1,5 +1,6 @@
 // R1 · Abonados, conexiones y medidores (CU-2.x).
 import { P } from '../permisos.js';
+import { numero } from '../ui/formato.js';
 import { C, ESTADOS, TIPO_ABONADO } from './comunes.js';
 
 const CONSULTAR = [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS];
@@ -8,6 +9,69 @@ const VER_MEDIDORES = [...CONSULTAR, P.REGISTRAR_LECTURA, P.REGISTRAR_INCIDENCIA
 
 const esJuridico = (v) => v.tipo_identificacion === 'JURIDICA';
 const esFisico = (v) => v.tipo_identificacion && !esJuridico(v);
+
+const ETIQUETA_TIPO = {
+  FISICO: 'Físico',
+  JURIDICO: 'Jurídico',
+  FISICA: 'Físico',
+  JURIDICA: 'Jurídico',
+};
+
+function enriquecerAbonados(filas = []) {
+  return filas.map((f) => ({
+    ...f,
+    tipo: ETIQUETA_TIPO[f.tipo_abonado] || f.tipo_abonado || '—',
+    contacto: [f.telefono, f.correo_electronico].filter(Boolean).join(' · ') || '—',
+  }));
+}
+
+function metricasAbonados(filas = []) {
+  const total = filas.length;
+  const activos = filas.filter((f) => f.activo === true || f.activo === 1 || String(f.activo).toLowerCase() === 'true').length;
+  const fisicos = filas.filter((f) => /fisic/i.test(String(f.tipo_abonado || ''))).length;
+  const juridicos = total - fisicos;
+
+  return [
+    {
+      titulo: 'Abonados',
+      valor: numero(total),
+      detalle: 'En la consulta',
+      tono: 'oceano',
+      icono: 'usuarios',
+    },
+    {
+      titulo: 'Activos',
+      valor: numero(activos),
+      detalle: 'Habilitados',
+      tono: 'verde',
+      icono: 'check',
+    },
+    {
+      titulo: 'Físicos',
+      valor: numero(fisicos),
+      detalle: 'Personas',
+      tono: 'cielo',
+      icono: 'perfil',
+    },
+    {
+      titulo: 'Jurídicos',
+      valor: numero(juridicos),
+      detalle: 'Empresas / entidades',
+      tono: 'marino',
+      icono: 'lista',
+    },
+  ];
+}
+
+const COLUMNAS_ABONADOS = [
+  { campo: 'activo', etiqueta: 'Estado' },
+  { campo: 'tipo', etiqueta: 'Tipo' },
+  { campo: 'nombre_completo', etiqueta: 'Nombre', clase: 'abonado-corto' },
+  { campo: 'identificacion', etiqueta: 'Identificación' },
+  { campo: 'direccion', etiqueta: 'Dirección', clase: 'texto-largo' },
+  { campo: 'contacto', etiqueta: 'Contacto', clase: 'texto-largo' },
+  { campo: 'fecha_registro', etiqueta: 'Registro' },
+];
 
 const CAMPOS_NUEVO_ABONADO = [
   {
@@ -110,13 +174,22 @@ export default {
       permisos: CONSULTAR,
       ruta: '/abonados',
       descripcion: 'Personas físicas y jurídicas que reciben el servicio. En cada uno se administran sus conexiones y medidores.',
+      mensajeVacio: 'No hay abonados para los filtros indicados.',
+      placeholderBusqueda: 'Buscar nombre, identificación, teléfono o correo…',
+      transformar: enriquecerAbonados,
+      metricas: metricasAbonados,
+      columnas: COLUMNAS_ABONADOS,
+      ocultar: [
+        'id_abonado', 'tipo_abonado', 'tipo_identificacion', 'telefono',
+        'correo_electronico', 'fecha_nacimiento',
+      ],
       filtros: [
-        { nombre: 'tipo_abonado', etiqueta: 'Tipo Abonado', opciones: TIPO_ABONADO },
+        { nombre: 'tipo_abonado', etiqueta: 'Tipo abonado', opciones: TIPO_ABONADO },
         { nombre: 'identificacion', etiqueta: 'Identificación' },
         { nombre: 'nombre', etiqueta: 'Nombre o razón social' },
       ],
       botones: [{
-        texto: 'Nuevo abonado', primario: true, permisos: GESTIONAR, ruta: '/abonados',
+        texto: 'Nuevo abonado', primario: true, permisos: GESTIONAR, icono: 'mas', ruta: '/abonados',
         campos: CAMPOS_NUEVO_ABONADO, textoEnviar: 'Registrar',
         exito: (r) => `Abonado registrado (ID ${r.salida?.id_abonado}).`,
       }],

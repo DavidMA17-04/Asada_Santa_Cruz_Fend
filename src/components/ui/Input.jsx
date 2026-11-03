@@ -46,12 +46,12 @@ export function Input({
           ${icono ? 'pl-9.5' : 'pl-4'}
           ${(clearable && value) || esPassword || iconoDerecha ? 'pr-9.5' : 'pr-4'}
           ${radioClase}
-          bg-[var(--superficie)] dark:bg-slate-900/60
-          text-[var(--texto)] dark:text-slate-100
-          border border-[var(--borde)] dark:border-slate-700/60
-          placeholder:text-[var(--texto-suave)] dark:placeholder:text-slate-400 placeholder:opacity-75
-          hover:border-[var(--acento)] dark:hover:border-sky-400/60
-          focus:border-[var(--acento)] focus:ring-2 focus:ring-sky-400/40 focus:bg-[var(--superficie)]
+          bg-[var(--superficie)]
+          text-[var(--texto)]
+          border border-[var(--borde)]
+          placeholder:text-[var(--texto-suave)] placeholder:opacity-80
+          hover:border-[var(--acento)]
+          focus:border-[var(--acento)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--acento)_35%,transparent)] focus:bg-[var(--superficie)]
           shadow-xs
           ${className}`}
         {...props}

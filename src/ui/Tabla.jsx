@@ -1,10 +1,114 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { etiquetaDe, formatearCelda } from './formato.js';
 import { BadgeStatus } from '../components/ui/BadgeStatus.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Pagination } from '../components/ui/Pagination.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { Icono } from './Icono.jsx';
+
+function iconoAccion(accion) {
+  if (accion.icono) return accion.icono;
+  const t = String(accion.texto || '').toLowerCase();
+  if (/auto-?asignar|asignar/.test(t)) return 'usuarios';
+  if (/prioridad|alerta/.test(t)) return 'alerta';
+  if (/estado|editar/.test(t)) return 'editar';
+  if (/cerrar|finalizar/.test(t)) return 'check';
+  if (/reabrir|reactivar|recargar/.test(t)) return 'recargar';
+  if (/historial|ver|detalle/.test(t)) return 'lista';
+  if (/anular|eliminar|suspender/.test(t)) return 'peligro';
+  if (/pago|registrar pago/.test(t)) return 'pago';
+  if (/pr[oó]rroga|recargo/.test(t)) return 'factura';
+  return 'accion';
+}
+
+function esAccionPeligro(accion) {
+  return Boolean(accion.peligro || /eliminar|desactivar|baja|anular|cerrar|suspender/i.test(accion.texto || ''));
+}
+
+function MenuAccionesFila({ acciones, fila, alAccion }) {
+  const [abierto, setAbierto] = useState(false);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
+  const ref = useRef(null);
+  const botonRef = useRef(null);
+  const visibles = acciones.filter((a) => !a.visible || a.visible(fila));
+
+  function posicionar() {
+    const r = botonRef.current?.getBoundingClientRect();
+    if (!r) return;
+    setCoords({
+      top: Math.round(r.bottom + 6),
+      right: Math.round(window.innerWidth - r.right),
+    });
+  }
+
+  useEffect(() => {
+    if (!abierto) return undefined;
+    posicionar();
+    const cerrar = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setAbierto(false);
+    };
+    const tecla = (e) => {
+      if (e.key === 'Escape') setAbierto(false);
+    };
+    const reposicionar = () => posicionar();
+    document.addEventListener('mousedown', cerrar);
+    document.addEventListener('keydown', tecla);
+    window.addEventListener('resize', reposicionar);
+    window.addEventListener('scroll', reposicionar, true);
+    return () => {
+      document.removeEventListener('mousedown', cerrar);
+      document.removeEventListener('keydown', tecla);
+      window.removeEventListener('resize', reposicionar);
+      window.removeEventListener('scroll', reposicionar, true);
+    };
+  }, [abierto]);
+
+  if (!visibles.length) return null;
+
+  return (
+    <div className={`menu-acciones-fila${abierto ? ' abierto' : ''}`} ref={ref}>
+      <button
+        ref={botonRef}
+        type="button"
+        className="menu-acciones-trigger"
+        aria-expanded={abierto}
+        aria-haspopup="menu"
+        title="Acciones"
+        onClick={() => {
+          if (!abierto) posicionar();
+          setAbierto((v) => !v);
+        }}
+      >
+        <Icono nombre="accion" tamano={16} />
+        <span>Acciones</span>
+        <Icono nombre="abajo" tamano={12} />
+      </button>
+      {abierto ? (
+        <div
+          className="menu-acciones-lista"
+          role="menu"
+          style={{ top: coords.top, right: coords.right }}
+        >
+          {visibles.map((a) => (
+            <button
+              key={a.texto}
+              type="button"
+              role="menuitem"
+              className={`menu-acciones-item${esAccionPeligro(a) ? ' peligro' : ''}`}
+              onClick={() => {
+                setAbierto(false);
+                alAccion?.(a, fila);
+              }}
+            >
+              <Icono nombre={iconoAccion(a)} tamano={14} />
+              <span>{a.texto}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 const ES_COLUMNA_CANTIDAD = /^(cantidad|cant|total_incidencias|mantenimientos_finalizados|cantidad_pagos|total_pagos|intentos|intentos_fallidos|medidores_activos|usuarios_activos|mes|anio|periodo|dias|dias_desde|dias_hasta)$/i;
 
@@ -122,13 +226,6 @@ export function Tabla({
     setPagina(0);
   }
 
-  function resolverVarianteAccion(accion) {
-    if (accion.peligro || /eliminar|desactivar|baja|anular/i.test(accion.texto)) return 'delete';
-    if (/editar|modificar|actualizar/i.test(accion.texto)) return 'edit';
-    if (/ver|detalle|consultar|historial/i.test(accion.texto) || accion.metodo === 'GET') return 'view';
-    return 'outline';
-  }
-
   return (
     <div className="w-full space-y-3">
       {/* Barra de herramientas interna (solo si no se controla externamente por la barra unificada) */}
@@ -155,10 +252,16 @@ export function Tabla({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs text-[var(--texto-suave)]">
-              {filtradas.length === filas.length
-                ? `${filas.length} ${filas.length === 1 ? 'registro' : 'registros'}`
-                : `${filtradas.length} de ${filas.length} registros`}
+            <span className="cuenta-filtro-badge">
+              {filtradas.length === filas.length ? (
+                <>
+                  <strong>{filas.length}</strong> {filas.length === 1 ? 'registro' : 'registros'}
+                </>
+              ) : (
+                <>
+                  <strong>{filtradas.length}</strong> de {filas.length} registros
+                </>
+              )}
             </span>
 
             <Button
@@ -173,7 +276,7 @@ export function Tabla({
       ) : null}
 
       {/* Contenedor de la Tabla */}
-      <div className="tabla-envoltura overflow-x-auto rounded-xl border border-[var(--borde)] bg-[var(--superficie)] shadow-2xs">
+      <div className="tabla-envoltura rounded-xl border border-[var(--borde)] bg-[var(--superficie)] shadow-2xs">
         <table className="w-full text-left text-sm border-collapse">
           <thead>
             <tr className="border-b border-[var(--borde)] bg-[var(--superficie-2)]/60 text-[var(--texto-suave)] font-semibold text-xs uppercase tracking-wider">
@@ -184,8 +287,7 @@ export function Tabla({
                   <th
                     key={c.campo}
                     onClick={() => ordenar(c.campo)}
-                    className={`py-3 px-4 cursor-pointer hover:text-[var(--acento)] select-none transition-colors ${centrada ? 'text-center col-cantidad' : 'text-left'
-                      }`}
+                    className={`py-3 px-3 cursor-pointer hover:text-[var(--acento)] select-none transition-colors ${centrada ? 'text-center col-cantidad' : 'text-left'}`}
                     title="Ordenar por esta columna"
                   >
                     <div className={`inline-flex items-center gap-1.5 ${centrada ? 'justify-center w-full' : ''}`}>
@@ -198,8 +300,8 @@ export function Tabla({
                 );
               })}
               {acciones.length ? (
-                <th className="py-3 px-4 text-center font-semibold text-xs tracking-wider uppercase text-slate-400 w-[200px]">
-                  ACCIONES
+                <th className="th-acciones py-3 px-3 font-semibold text-xs tracking-wider uppercase">
+                  Acciones
                 </th>
               ) : null}
             </tr>
@@ -213,10 +315,16 @@ export function Tabla({
                   className="hover:bg-sky-500/5 transition-colors group"
                 >
                   {cols.map((c) => {
-                    // Si el campo es activo o estado, renderizar BadgeStatus
-                    if (c.campo === 'activo' || c.campo === 'estado' || c.campo === 'estado_factura' || c.campo === 'estado_conexion') {
+                    // Estado / prioridad: insignia con color
+                    if (
+                      c.campo === 'activo'
+                      || c.campo === 'estado'
+                      || c.campo === 'estado_factura'
+                      || c.campo === 'estado_conexion'
+                      || c.campo === 'prioridad'
+                    ) {
                       return (
-                        <td key={c.campo} className="py-3 px-4 whitespace-nowrap">
+                        <td key={c.campo} className="tabla-td whitespace-nowrap">
                           <BadgeStatus valor={fila[c.campo]} />
                         </td>
                       );
@@ -226,33 +334,15 @@ export function Tabla({
                     const { contenido, clase } = formatearCelda(c.campo, fila[c.campo]);
                     const claseFinal = centrada ? `${clase || ''} text-center col-cantidad`.trim() : (clase || '');
                     return (
-                      <td key={c.campo} className={`py-3 px-4 ${claseFinal}`}>
+                      <td key={c.campo} className={`tabla-td ${claseFinal}`}>
                         {contenido}
                       </td>
                     );
                   })}
 
-                  {/* Acciones centradas con botones estandarizados */}
                   {acciones.length ? (
-                    <td className="py-3 px-4 text-center whitespace-nowrap">
-                      <div className="inline-flex items-center justify-center gap-1.5">
-                        {acciones
-                          .filter((a) => !a.visible || a.visible(fila))
-                          .map((a) => {
-                            const variante = resolverVarianteAccion(a);
-                            return (
-                              <Button
-                                key={a.texto}
-                                variant={variante}
-                                size="sm"
-                                onClick={() => alAccion(a, fila)}
-                                title={a.texto}
-                              >
-                                {a.texto}
-                              </Button>
-                            );
-                          })}
-                      </div>
+                    <td className="tabla-celda-acciones">
+                      <MenuAccionesFila acciones={acciones} fila={fila} alAccion={alAccion} />
                     </td>
                   ) : null}
                 </tr>

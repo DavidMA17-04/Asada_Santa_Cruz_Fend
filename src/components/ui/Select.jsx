@@ -66,11 +66,11 @@ export function Select({
         className={`w-full py-2.5 text-sm flex items-center justify-between gap-2.5 transition-all outline-none text-left
           ${icono ? 'pl-9.5' : 'pl-4'} pr-9.5
           ${radioClase}
-          bg-[var(--superficie)] dark:bg-slate-900/60
-          border border-[var(--borde)] dark:border-slate-700/60
-          hover:border-[var(--acento)] dark:hover:border-sky-400/60
-          ${tieneValor ? 'text-[var(--texto)] dark:text-slate-100 font-medium' : 'text-[var(--texto-suave)] dark:text-slate-400'}
-          ${abierto ? 'ring-2 ring-sky-400/40 border-[var(--acento)]' : ''}
+          bg-[var(--superficie)]
+          border border-[var(--borde)]
+          hover:border-[var(--acento)]
+          ${tieneValor ? 'text-[var(--texto)] font-medium' : 'text-[var(--texto-suave)]'}
+          ${abierto ? 'ring-2 ring-[color-mix(in_srgb,var(--acento)_35%,transparent)] border-[var(--acento)]' : ''}
           shadow-xs cursor-pointer select-none`}
       >
         {icono ? (
@@ -94,7 +94,7 @@ export function Select({
       {abierto && !disabled ? (
         <div
           className="absolute z-50 left-0 mt-1.5 w-full min-w-[180px] max-h-60 overflow-y-auto rounded-xl
-            bg-[var(--superficie)] dark:bg-slate-900 border border-[var(--borde)] dark:border-slate-700/80 shadow-xl py-1 backdrop-blur-md animate-in fade-in zoom-in-95 duration-100"
+            bg-[var(--superficie)] border border-[var(--borde)] shadow-xl py-1 backdrop-blur-md"
         >
           {!required && (
             <button

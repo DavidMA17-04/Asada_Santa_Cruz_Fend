@@ -14,6 +14,7 @@ import {
   lecturaFacturada,
   ordenarRutaLectura,
   prepararFiltrosHistorial,
+  metricasRutaLectura,
   seccionFormularioLectura,
 } from './lecturas.js';
 
@@ -65,9 +66,10 @@ export default {
       pestana: 'Ruta de lectura',
       permisos: [...VER_MEDIDORES, P.GESTIONAR_FACTURACION],
       ruta: '/medidores/sin-lectura',
-      descripcion: 'Ruta de campo ordenada por zona y serie. Al registrar, el consumo se calcula solo y puede generar una alerta.',
+      descripcion: 'Ruta de campo ordenada por zona y serie. Al registrar verá la lectura anterior; el consumo se calcula solo y puede generar una alerta.',
       mensajeVacio: 'Todos los medidores activos ya tienen lectura este mes. Use “Registrar lectura” si necesita cargar uno puntual.',
       transformar: ordenarRutaLectura,
+      metricas: metricasRutaLectura,
       columnas: COLUMNAS_RUTA_LECTURA,
       acciones: [accionRegistrarLectura({ permisos: LECTURA })],
     },
@@ -173,6 +175,11 @@ export default {
         texto: 'Ver saldo', metodo: 'GET', suave: true,
         titulo: (f) => `Saldo · factura ${f.id_factura}`,
         ruta: (f) => `/facturas/${f.id_factura}/saldo`,
+        comoDetalle: true,
+        ordenCampos: [
+          'estado', 'saldo', 'monto_total', 'recargos', 'pagado',
+          'fecha_emision', 'fecha_vencimiento', 'id_factura', 'id_conexion', 'id_lectura',
+        ],
       }],
     },
     {

@@ -1,7 +1,58 @@
 // Catálogos: tarifas, métodos de pago, tipos de trabajo e incidencia, niveles y reglas de consumo.
 // Cualquier usuario puede consultarlos; modificarlos exige el permiso de gestión del módulo dueño.
 import { P } from '../permisos.js';
+import { numero } from '../ui/formato.js';
 import { C, campoActivo } from './comunes.js';
+
+function metricasReglasConsumo(filas = []) {
+  const total = filas.length;
+  const activas = filas.filter((f) => f.activo === true || f.activo === 1 || String(f.activo).toLowerCase() === 'true').length;
+  const maxVar = filas.reduce((m, f) => Math.max(m, Number(f.porcentaje_variacion) || 0), 0);
+  const avgMeses = total
+    ? Math.round(filas.reduce((s, f) => s + (Number(f.meses_promedio) || 0), 0) / total)
+    : 0;
+
+  return [
+    {
+      titulo: 'Reglas',
+      valor: numero(total),
+      detalle: 'Configuradas en el catálogo',
+      tono: 'oceano',
+      icono: 'lista',
+    },
+    {
+      titulo: 'Activas',
+      valor: numero(activas),
+      detalle: 'Vigentes para alertas',
+      tono: 'verde',
+      icono: 'check',
+    },
+    {
+      titulo: 'Variación máx.',
+      valor: `${numero(maxVar)} %`,
+      detalle: 'Umbral más alto',
+      tono: maxVar >= 50 ? 'rojo' : 'ambar',
+      icono: 'alerta',
+    },
+    {
+      titulo: 'Meses promedio',
+      valor: numero(avgMeses),
+      detalle: 'Ventana típica de cálculo',
+      tono: 'cielo',
+      icono: 'reloj',
+    },
+  ];
+}
+
+const COLUMNAS_REGLAS_CONSUMO = [
+  { campo: 'activo', etiqueta: 'Estado' },
+  { campo: 'nombre_regla', etiqueta: 'Regla' },
+  { campo: 'nombre_nivel', etiqueta: 'Nivel' },
+  { campo: 'porcentaje_variacion', etiqueta: 'Variación %', clase: 'num' },
+  { campo: 'meses_promedio', etiqueta: 'Meses', clase: 'num' },
+  { campo: 'consumo_minimo', etiqueta: 'Mínimo m³', clase: 'num' },
+  { campo: 'descripcion', etiqueta: 'Descripción', clase: 'texto-largo' },
+];
 
 /** Catálogo de un solo campo de texto: listar, crear y editar. */
 function catalogoSimple({ titulo, ruta, id, campo, etiqueta, permisos, descripcion, extra = [] }) {
@@ -138,8 +189,13 @@ export default {
       permisos: [],
       ruta: '/catalogos/reglas-consumo?solo_activas=false',
       descripcion: 'Una lectura genera alerta cuando supera el promedio de los últimos meses en el porcentaje indicado y el consumo mínimo.',
+      mensajeVacio: 'No hay reglas de consumo configuradas.',
+      placeholderBusqueda: 'Buscar regla, nivel o descripción…',
+      metricas: metricasReglasConsumo,
+      columnas: COLUMNAS_REGLAS_CONSUMO,
+      ocultar: ['id_regla_consumo', 'id_nivel_alerta', 'fecha_creacion'],
       botones: [{
-        texto: 'Nueva regla', primario: true, permisos: CONSUMO, ruta: '/catalogos/reglas-consumo',
+        texto: 'Nueva regla', primario: true, permisos: CONSUMO, icono: 'mas', ruta: '/catalogos/reglas-consumo',
         campos: camposRegla(null),
         exito: () => 'Regla creada.',
       }],

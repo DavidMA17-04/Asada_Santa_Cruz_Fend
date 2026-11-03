@@ -47,11 +47,12 @@ export function Login({ mensaje }) {
       return;
     }
 
-    setEnviandoCorreo(true);
-    // Solo visual: no se envía nada al servidor.
-    await new Promise((listo) => setTimeout(listo, 900));
+    // No hay endpoint de recuperación en el backend. No fingir envío exitoso.
     setEnviandoCorreo(false);
-    setCorreoEnviado(true);
+    setCorreoEnviado(false);
+    setErrorCorreo(
+      'El restablecimiento por correo aún no está disponible. Solicite el cambio de contraseña a un administrador del sistema.',
+    );
   }
 
   return (
