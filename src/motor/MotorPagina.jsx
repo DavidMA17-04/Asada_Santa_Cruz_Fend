@@ -1,8 +1,44 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, obtener, sesion } from '../api.js';
-import { abrirModal, avisar, confirmar, Formulario, GraficoBarras, GraficoDonut, Icono, ResumenVisualDatos, Tabla } from '../ui/index.js';
+import {
+  abrirModal,
+  avisar,
+  confirmar,
+  Formulario,
+  Icono,
+  Tabla,
+  TableroDiagnosticoSLA,
+  MetricsSummary,
+  UnifiedFilterBar,
+} from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
+
+
+function estiloAccion(b = {}) {
+  let icono = b.icono;
+  let claseTono = '';
+  const texto = String(b.texto || '').toLowerCase();
+  if (b.peligro || /eliminar|desactivar|baja|anular/i.test(texto)) {
+    icono = icono || 'peligro';
+    claseTono = 'peligro';
+  } else if (/editar|modificar/i.test(texto)) {
+    icono = icono || 'editar';
+    claseTono = 'secundario';
+  } else if (/nuevo|agregar|crear|registrar|programar/i.test(texto)) {
+    icono = icono || 'mas';
+    claseTono = 'primario';
+  } else if (/ver|detalle|consultar|historial/i.test(texto)) {
+    icono = icono || 'ojo';
+    claseTono = 'neutro';
+  } else if (/descargar|exportar/i.test(texto)) {
+    icono = icono || 'descargar';
+    claseTono = 'secundario';
+  } else {
+    icono = icono || 'accion';
+  }
+  return { icono, claseTono };
+}
 
 const resolver = (valor, ...args) => (typeof valor === 'function' ? valor(...args) : valor);
 const permitidos = (lista = []) => lista.filter((x) => sesion.puede(x.permisos || []));
@@ -144,20 +180,34 @@ export async function ejecutarAccion(accion, fila, recargar) {
 }
 
 function Botones({ lista, recargar }) {
-  return permitidos(lista).map((b) => (
-    <button
-      key={b.texto}
-      className={`boton ${b.primario ? 'primario' : ''} ${b.peligro ? 'peligro' : ''}`}
-      type="button"
-      onClick={() => ejecutarAccion(b, null, recargar)}
-    >
-      {b.primario ? <Icono nombre="mas" /> : null}
-      {b.texto}
-    </button>
-  ));
+  return permitidos(lista).map((b) => {
+    const { icono: ic, claseTono } = estiloAccion(b);
+    return (
+      <button
+        key={b.texto}
+        className={`boton ${b.primario ? 'primario' : claseTono}`}
+        type="button"
+        onClick={() => ejecutarAccion(b, null, recargar)}
+      >
+        <Icono nombre={ic} />
+        <span>{b.texto}</span>
+      </button>
+    );
+  });
 }
 
-function ContenidoConsulta({ def, r, recargar }) {
+function ContenidoConsulta({
+  def,
+  r,
+  recargar,
+  terminoBusqueda,
+  alCambiarBusqueda,
+  exportarRef,
+}) {
+  if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
+    return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
+  }
+
   const acciones = permitidos(def.acciones);
   const opciones = {
     acciones,
@@ -166,6 +216,10 @@ function ContenidoConsulta({ def, r, recargar }) {
     columnas: def.columnas,
     mensajeVacio: def.mensajeVacio,
     nombreArchivo: String(def.nombreArchivo || def.titulo || 'datos').toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi, '-'),
+    terminoExterno: terminoBusqueda,
+    alCambiarTerminoExterno: alCambiarBusqueda,
+    exportarRef,
+    ocultarHerramientas: Boolean(exportarRef || alCambiarBusqueda),
   };
   const botones = permitidos(def.botones || []);
 
@@ -180,39 +234,26 @@ function ContenidoConsulta({ def, r, recargar }) {
         r.conjuntos.map((filas, i) => (
           <div className="bloque-conjunto" key={i}>
             <h3>{def.conjuntos[i] || `Resultado ${i + 1}`}</h3>
-            <ResumenVisualDatos filas={filas} />
             <BloqueTabla filas={filas} />
           </div>
         ))
       ) : (
-        <>
-          {def.graficoPastel ? (
-            <div className="tarjeta-mini-grafico">
-              <div className="tarjeta-mini-cabecera">
-                <strong>{def.graficoPastel.titulo}</strong>
-              </div>
-              <GraficoDonut
-                segmentos={segmentosPastel(r.datos || [], def.graficoPastel)}
-                totalEtiqueta={def.graficoPastel.totalEtiqueta || 'Total'}
-              />
-            </div>
-          ) : null}
-          {def.grafico ? (
-            <GraficoBarras filas={r.datos || []} {...def.grafico} />
-          ) : (
-            <ResumenVisualDatos filas={r.datos || []} />
-          )}
-          <Tabla filas={r.datos || []} {...opciones} />
-        </>
+        <Tabla filas={r.datos || []} {...opciones} />
       )}
     </div>
   );
 }
 
-function Encabezado({ sec, herramientas }) {
+function Encabezado({ sec, pagina, herramientas }) {
   return (
     <div className="encabezado-seccion">
-      <div>
+      <div className="encabezado-textos">
+        {pagina ? (
+          <div className="modulo-pill">
+            <Icono nombre={pagina.icono || 'lista'} tamano={14} />
+            <span>{pagina.titulo}</span>
+          </div>
+        ) : null}
         <h2>{sec.titulo}</h2>
         {sec.descripcion ? <p className="descripcion">{sec.descripcion}</p> : null}
       </div>
@@ -221,10 +262,12 @@ function Encabezado({ sec, herramientas }) {
   );
 }
 
-function SeccionConsulta({ sec }) {
+function SeccionConsulta({ sec, pagina }) {
   const [resultado, setResultado] = useState(null);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(sec.cargarAlInicio !== false);
+  const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const exportarRef = useRef(null);
   const filtrosRef = useRef(null);
   const filtrosActuales = useRef({});
 
@@ -256,26 +299,47 @@ function SeccionConsulta({ sec }) {
   }, [sec.ruta]);
 
   const campos = camposDe(sec.filtros);
+  const tieneDatos = Boolean(resultado?.datos?.length);
+
+  const totalRegistrosActual = useMemo(() => {
+    const lista = resultado?.datos || [];
+    if (!terminoBusqueda.trim()) return lista.length;
+    const t = terminoBusqueda.trim().toLowerCase();
+    return lista.filter((f) => Object.values(f).some((v) => String(v ?? '').toLowerCase().includes(t))).length;
+  }, [resultado?.datos, terminoBusqueda]);
+
   const herramientas = [
-    ...permitidos(sec.botones || []).map((b) => (
-      <button
-        key={b.texto}
-        className={`boton ${b.primario ? 'primario' : ''} ${b.peligro ? 'peligro' : ''}`}
-        type="button"
-        onClick={() => ejecutarAccion(b, null, () => cargar())}
-      >
-        {b.primario ? <Icono nombre="mas" /> : null}
-        {b.texto}
-      </button>
-    )),
-    <button key="act" className="boton" type="button" title="Actualizar" onClick={() => cargar()}>
-      <Icono nombre="recargar" /> Actualizar
+    ...permitidos(sec.botones || []).map((b) => {
+      const { icono: ic, claseTono } = estiloAccion(b);
+      return (
+        <button
+          key={b.texto}
+          className={`boton ${b.primario ? 'primario' : claseTono}`}
+          type="button"
+          onClick={() => ejecutarAccion(b, null, () => cargar())}
+        >
+          <Icono nombre={ic} />
+          <span>{b.texto}</span>
+        </button>
+      );
+    }),
+    <button key="act" className="boton-actualizar-pill" type="button" title="Actualizar datos" onClick={() => cargar()}>
+      <Icono nombre="recargar" />
+      <span>Actualizar</span>
     </button>,
   ];
 
   return (
     <section className="tarjeta">
-      <Encabezado sec={sec} herramientas={herramientas} />
+      {/* 1. Título y descripción del módulo con botón de acción rápida superior */}
+      <Encabezado sec={sec} pagina={pagina} herramientas={herramientas} />
+
+      {/* 2. Resumen métrico de estados (conteo numérico por categoría sin gráficas) */}
+      {resultado?.datos?.length ? (
+        <MetricsSummary filas={resultado.datos} tituloModulo={sec.titulo} />
+      ) : null}
+
+      {/* 3. Barra de filtros unificada (Búsqueda + Selects + Contador de registros + Botón Exportar CSV) */}
       {campos.length ? (
         <Formulario
           key={sec.ruta}
@@ -284,13 +348,34 @@ function SeccionConsulta({ sec }) {
           filtros
           textoEnviar="Aplicar filtros"
           alEnviar={async (datos) => cargar(datos)}
+          alExportar={tieneDatos ? () => exportarRef.current?.() : null}
+          terminoBusqueda={terminoBusqueda}
+          alCambiarBusqueda={setTerminoBusqueda}
+          cuentaRegistros={totalRegistrosActual}
         />
-      ) : null}
+      ) : (
+        <UnifiedFilterBar
+          terminoBusqueda={terminoBusqueda}
+          alCambiarBusqueda={setTerminoBusqueda}
+          totalRegistros={totalRegistrosActual}
+          alExportarCsv={tieneDatos ? () => exportarRef.current?.() : null}
+          placeholderBusqueda="Filtrar en los resultados…"
+        />
+      )}
+
+      {/* 4. Tabla o lista de datos ordenada con columnas claras y 5. Paginación */}
       {cargando ? <div className="resultado"><div className="cargando">Cargando…</div></div> : null}
       {!cargando && error ? <div className="resultado"><div className="error-form" role="alert">{error}</div></div> : null}
       {!cargando && !error && resultado ? (
         <div className="resultado">
-          <ContenidoConsulta def={sec} r={resultado} recargar={() => cargar()} />
+          <ContenidoConsulta
+            def={sec}
+            r={resultado}
+            recargar={() => cargar()}
+            terminoBusqueda={terminoBusqueda}
+            alCambiarBusqueda={setTerminoBusqueda}
+            exportarRef={exportarRef}
+          />
         </div>
       ) : null}
       {!cargando && !error && !resultado && sec.cargarAlInicio === false ? (
@@ -300,7 +385,7 @@ function SeccionConsulta({ sec }) {
   );
 }
 
-function SeccionResumen({ sec }) {
+function SeccionResumen({ sec, pagina }) {
   const [fila, setFila] = useState(null);
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -326,6 +411,7 @@ function SeccionResumen({ sec }) {
 
   const grupos = sec.grupos || [{ tarjetas: sec.tarjetas || [] }];
   const filas = [];
+  const tarjetasDestacadas = [];
 
   if (fila) {
     if (fila.fecha_corte) {
@@ -349,16 +435,31 @@ function SeccionResumen({ sec }) {
       });
     };
 
+    const tonosRotacion = ['azul', 'coral', 'menta'];
+    let idxTarjeta = 0;
+
     grupos.forEach((grupo) => {
       (grupo.tarjetas || []).forEach((t) => {
         const valor = t.calcular ? t.calcular(fila) : fila[t.campo];
         const vacio = valor === null || valor === undefined || valor === '';
+        const valorFormateado = vacio ? '—' : (t.formato ? t.formato(valor) : String(valor));
+        const tituloInd = t.etiqueta || etiquetaDe(t.campo || '');
         filas.push({
           grupo: grupo.titulo || 'Resumen',
-          indicador: t.etiqueta || etiquetaDe(t.campo || ''),
-          valor: vacio ? '—' : (t.formato ? t.formato(valor) : String(valor)),
+          indicador: tituloInd,
+          valor: valorFormateado,
           detalle: t.ayuda || '',
         });
+        if (tarjetasDestacadas.length < 3) {
+          tarjetasDestacadas.push({
+            tono: tonosRotacion[idxTarjeta % tonosRotacion.length],
+            icono: t.icono || 'moneda',
+            titulo: tituloInd,
+            valor: valorFormateado,
+            subtitulo: t.ayuda || grupo.titulo || 'Resumen de cartera',
+          });
+          idxTarjeta += 1;
+        }
       });
       if (grupo.barra) agregarBarra(grupo.barra, grupo.titulo || 'Resumen');
     });
@@ -377,9 +478,11 @@ function SeccionResumen({ sec }) {
     <section className="tarjeta">
       <Encabezado
         sec={sec}
+        pagina={pagina}
         herramientas={[
-          <button key="act" className="boton" type="button" title="Actualizar" onClick={cargar}>
-            <Icono nombre="recargar" /> Actualizar
+          <button key="act" className="boton-actualizar-pill" type="button" title="Actualizar datos" onClick={cargar}>
+            <Icono nombre="recargar" />
+            <span>Actualizar</span>
           </button>,
         ]}
       />
@@ -387,6 +490,22 @@ function SeccionResumen({ sec }) {
       {!cargando && error ? <div className="error-form" role="alert">{error}</div> : null}
       {!cargando && !error && fila ? (
         <div className="resultado">
+          {tarjetasDestacadas.length ? (
+            <div className="tarjetas-repositorio-grid">
+              {tarjetasDestacadas.map((t, i) => (
+                <div className="tarjeta-repositorio" key={i}>
+                  <div className={`tarjeta-repositorio-icono tono-${t.tono}`}>
+                    <Icono nombre={t.icono} />
+                  </div>
+                  <div className="tarjeta-repositorio-info">
+                    <span className="tarjeta-repositorio-titulo">{t.titulo}</span>
+                    <strong className="tarjeta-repositorio-valor">{t.valor}</strong>
+                    <small className="tarjeta-repositorio-sub">{t.subtitulo}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <Tabla filas={filas} columnas={columnas} nombreArchivo="resumen-cartera" />
         </div>
       ) : null}
@@ -394,12 +513,12 @@ function SeccionResumen({ sec }) {
   );
 }
 
-function SeccionFormulario({ sec }) {
+function SeccionFormulario({ sec, pagina }) {
   const [clave, setClave] = useState(0);
 
   return (
     <section className="tarjeta">
-      <Encabezado sec={sec} />
+      <Encabezado sec={sec} pagina={pagina} />
       <div className="form-panel">
         <Formulario
           key={clave}
@@ -417,10 +536,10 @@ function SeccionFormulario({ sec }) {
   );
 }
 
-function SeccionAcciones({ sec }) {
+function SeccionAcciones({ sec, pagina }) {
   return (
     <section className="tarjeta">
-      <Encabezado sec={sec} />
+      <Encabezado sec={sec} pagina={pagina} />
       <div className="herramientas">
         <Botones lista={sec.botones || []} />
       </div>
@@ -453,5 +572,5 @@ export function MotorPagina({ pagina }) {
   const sec = secciones[indice];
   const Tipo = TIPOS[sec.tipo || 'consulta'];
 
-  return <Tipo key={`${pagina.id}-${indice}`} sec={sec} />;
+  return <Tipo key={`${pagina.id}-${indice}`} sec={sec} pagina={pagina} />;
 }

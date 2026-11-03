@@ -1,63 +1,120 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ocean-900: #0C3B5E;
+  --color-ocean-800: #1A5B8C;
+  --color-water-400: #38B6FF;
+  --color-water-300: #4EB8E2;
+  --color-nature-700: #3B7E36;
+  --color-nature-600: #5EA839;
+  --color-dark-bg: #0B131B;
+  --color-dark-surface: #111C26;
+  --color-dark-card: #15222E;
+  --color-dark-border: #1E3142;
+}
+
 :root {
-  /* Paleta oficial extraída del logo ASADA Santa Cruz (Azul Marino, Azul Océano, Celeste Agua y Verde Montaña) */
+  /* Paleta oficial extraída del logo ASADA Santa Cruz (Azul Océano, Azul Agua, Verde Naturaleza) */
+  --asada-ocean-base: #0C3B5E;
+  --asada-ocean-alt: #1A5B8C;
+  --asada-water-accent: #38B6FF;
+  --asada-water-light: #4EB8E2;
+  --asada-nature-green: #3B7E36;
+  --asada-nature-light: #5EA839;
+  --asada-dark-bg: #0B131B;
+  --asada-dark-surface: #111C26;
+  --asada-dark-card: #15222E;
+  --asada-dark-border: #1E3142;
+
   --fondo: #f4f7f9;
   --superficie: #ffffff;
   --superficie-2: #eef3f7;
   --borde: #e1e8ef;
   --borde-suave: #d2dde8;
-  --texto: #102a43;
+  --texto: #0C3B5E;
   --texto-suave: #566b7f;
-  --primario: #144272;
-  --primario-hover: #0e3156;
+  --primario: #0C3B5E;
+  --primario-hover: #1A5B8C;
   --primario-suave: #e6f0f8;
-  --acento: #1b76a6;
-  --cielo: #38b2e3;
-  --verde-asada: #2e7d47;
-  --exito: #2e7d47;
+  --acento: #38B6FF;
+  --cielo: #4EB8E2;
+  --verde-asada: #3B7E36;
+  --exito: #3B7E36;
   --exito-suave: #e4f4e9;
   --aviso: #b45309;
   --aviso-suave: #fef3c7;
   --peligro: #be123c;
   --peligro-suave: #ffe4e6;
-  --info: #1b76a6;
+  --info: #1A5B8C;
   --info-suave: #e0f2fe;
   --neutro-suave: #eef2f6;
   --radio: 16px;
-  --sombra: 0 1px 2px rgba(16, 42, 67, 0.04), 0 4px 12px rgba(16, 42, 67, 0.03);
-  --sombra-alta: 0 18px 40px rgba(16, 42, 67, 0.14);
+  --sombra: 0 1px 2px rgba(12, 59, 94, 0.04), 0 4px 12px rgba(12, 59, 94, 0.03);
+  --sombra-alta: 0 18px 40px rgba(12, 59, 94, 0.14);
   font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 14px;
   color: var(--texto);
 }
 
 :root[data-tema="oscuro"] {
-  --fondo: #0b1520;
-  --superficie: #112030;
-  --superficie-2: #172b40;
-  --borde: #223b56;
-  --borde-suave: #2b4a6b;
+  --fondo: #0B131B;
+  --superficie: #111C26;
+  --superficie-2: #15222E;
+  --borde: #1E3142;
+  --borde-suave: #273E54;
   --texto: #f0f6fc;
   --texto-suave: #94a9be;
-  --primario: #38b2e3;
-  --primario-hover: #5cc3ed;
-  --primario-suave: rgba(56, 178, 227, 0.16);
-  --acento: #2896b8;
-  --verde-asada: #4da656;
-  --exito: #4da656;
-  --exito-suave: rgba(77, 166, 86, 0.16);
+  --primario: #38B6FF;
+  --primario-hover: #4EB8E2;
+  --primario-suave: rgba(56, 182, 255, 0.16);
+  --acento: #4EB8E2;
+  --verde-asada: #5EA839;
+  --exito: #5EA839;
+  --exito-suave: rgba(94, 168, 57, 0.16);
   --aviso: #fbbf24;
   --aviso-suave: rgba(251, 191, 36, 0.16);
   --peligro: #fb7185;
   --peligro-suave: rgba(251, 113, 133, 0.16);
-  --info: #7dd3fc;
-  --info-suave: rgba(125, 211, 252, 0.15);
-  --neutro-suave: #1b3148;
+  --info: #38B6FF;
+  --info-suave: rgba(56, 182, 255, 0.15);
+  --neutro-suave: #15222E;
   --sombra: 0 2px 8px rgba(0, 0, 0, 0.35);
   --sombra-alta: 0 20px 50px rgba(0, 0, 0, 0.65);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Contención estricta de iconos SVG */
+svg.icono,
+.icono {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.modulo-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  background: rgba(56, 182, 255, 0.1);
+  color: var(--primario);
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  border: 1px solid rgba(56, 182, 255, 0.25);
+  width: fit-content;
+}
+
+.modulo-pill svg {
+  width: 14px !important;
+  height: 14px !important;
+  min-width: 14px !important;
+  min-height: 14px !important;
+  flex-shrink: 0;
 }
 
 body {
@@ -2130,6 +2187,13 @@ tbody tr:hover {
   background: var(--primario-suave);
 }
 
+td.num.col-cantidad,
+td.col-cantidad,
+th.col-cantidad,
+td.num.text-center {
+  text-align: center !important;
+}
+
 td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -2323,13 +2387,44 @@ td.acciones .boton {
 
 /* ---------- Modal ---------- */
 dialog.modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  margin: auto !important;
   border: 1px solid var(--borde);
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 0;
   width: min(720px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
   background: var(--superficie);
-  box-shadow: var(--sombra-alta);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   color: var(--texto);
+  outline: none;
+  overflow: hidden;
+  animation: modalAparicion 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog.modal:not([open]) {
+  display: none !important;
+}
+
+dialog.modal[open] {
+  display: flex !important;
+  flex-direction: column;
+}
+
+@keyframes modalAparicion {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 dialog.modal.ancho {
@@ -2337,12 +2432,14 @@ dialog.modal.ancho {
 }
 
 dialog.modal.chico {
-  width: min(420px, calc(100vw - 32px));
+  width: min(460px, calc(100vw - 32px));
 }
 
 dialog.modal::backdrop {
-  background: rgba(16, 42, 67, 0.45);
-  backdrop-filter: blur(2px);
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 19, 27, 0.7);
+  backdrop-filter: blur(4px);
 }
 
 .modal-cabecera {

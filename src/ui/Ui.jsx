@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { registrarUi } from './registro.js';
 
 let seq = 0;
@@ -33,7 +33,10 @@ function Dialogo({ modal, onCerrar }) {
   }, [modal.id, onCerrar]);
 
   return (
-    <dialog ref={ref} className={`modal ${modal.tamano || ''}`}>
+    <dialog
+      ref={ref}
+      className={`modal ${modal.tamano || ''}`}
+      >
       <div className="modal-cabecera">
         <h2>{modal.titulo}</h2>
         <button className="modal-cerrar" type="button" aria-label="Cerrar" onClick={() => ref.current?.close()}>×</button>
