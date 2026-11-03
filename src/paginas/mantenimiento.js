@@ -1,5 +1,6 @@
 // R4 · Mantenimientos e incidencias (CU-5.x).
 import { P } from '../permisos.js';
+import { numero } from '../ui/formato.js';
 import { C, ESTADOS, fechas } from './comunes.js';
 
 const CONSULTAR = [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO];
@@ -10,6 +11,123 @@ const REGISTRAR_INCIDENCIA = [P.REGISTRAR_INCIDENCIA, P.GESTIONAR_MANTENIMIENTO]
 const abierta = (f) => f.estado !== 'Resuelta';
 const resuelta = (f) => f.estado === 'Resuelta';
 const enCurso = (f) => f.estado === 'Programado' || f.estado === 'En proceso';
+
+function enriquecerIncidencias(filas = []) {
+  return filas.map((f) => ({
+    ...f,
+    tipo: f.tipo || f.nombre_tipo || f.tipo_incidencia || '—',
+    medidor: f.medidor || f.numero_serie || f.serie || '—',
+  }));
+}
+
+function metricasIncidencias(filas = []) {
+  const total = filas.length;
+  const abiertas = filas.filter((f) => String(f.estado).toLowerCase() === 'abierta').length;
+  const proceso = filas.filter((f) => /proceso/i.test(String(f.estado || ''))).length;
+  const altas = filas.filter((f) => String(f.prioridad).toLowerCase() === 'alta').length;
+  const resueltas = filas.filter((f) => /resuelta/i.test(String(f.estado || ''))).length;
+
+  return [
+    {
+      titulo: 'Total',
+      valor: numero(total),
+      detalle: 'En la consulta',
+      tono: 'oceano',
+      icono: 'alerta',
+    },
+    {
+      titulo: 'Abiertas / proceso',
+      valor: numero(abiertas + proceso),
+      detalle: `${numero(proceso)} en proceso`,
+      tono: abiertas + proceso > 0 ? 'ambar' : 'verde',
+      icono: 'reloj',
+    },
+    {
+      titulo: 'Prioridad alta',
+      valor: numero(altas),
+      detalle: 'Requieren atención',
+      tono: altas > 0 ? 'rojo' : 'verde',
+      icono: 'peligro',
+    },
+    {
+      titulo: 'Resueltas',
+      valor: numero(resueltas),
+      detalle: 'Cerradas en la consulta',
+      tono: 'verde',
+      icono: 'check',
+    },
+  ];
+}
+
+const COLUMNAS_INCIDENCIAS = [
+  { campo: 'estado', etiqueta: 'Estado' },
+  { campo: 'prioridad', etiqueta: 'Prioridad' },
+  { campo: 'id_incidencia', etiqueta: 'Nº', clase: 'num' },
+  { campo: 'tipo', etiqueta: 'Tipo' },
+  { campo: 'fecha_incidente', etiqueta: 'Fecha' },
+  { campo: 'ubicacion', etiqueta: 'Ubicación', clase: 'abonado-corto' },
+  { campo: 'medidor', etiqueta: 'Medidor' },
+  { campo: 'descripcion', etiqueta: 'Descripción', clase: 'texto-largo' },
+  { campo: 'horas_resolucion', etiqueta: 'Horas', clase: 'num' },
+];
+
+function enriquecerMantenimientos(filas = []) {
+  return filas.map((f) => ({
+    ...f,
+    tipo_trabajo: f.tipo_trabajo || f.nombre_trabajo || f.tipo || '—',
+    responsable: f.responsable || f.nombre_empleado || f.empleado || '—',
+    ubicacion: f.ubicacion || f.direccion || '—',
+  }));
+}
+
+function metricasMantenimientos(filas = []) {
+  const total = filas.length;
+  const programados = filas.filter((f) => /programad/i.test(String(f.estado || ''))).length;
+  const proceso = filas.filter((f) => /proceso/i.test(String(f.estado || ''))).length;
+  const finalizados = filas.filter((f) => /finalizad/i.test(String(f.estado || ''))).length;
+
+  return [
+    {
+      titulo: 'Total',
+      valor: numero(total),
+      detalle: 'En la consulta',
+      tono: 'oceano',
+      icono: 'herramienta',
+    },
+    {
+      titulo: 'Programados',
+      valor: numero(programados),
+      detalle: 'Pendientes de iniciar',
+      tono: programados > 0 ? 'ambar' : 'neutral',
+      icono: 'calendario',
+    },
+    {
+      titulo: 'En proceso',
+      valor: numero(proceso),
+      detalle: 'Activos ahora',
+      tono: proceso > 0 ? 'cielo' : 'neutral',
+      icono: 'reloj',
+    },
+    {
+      titulo: 'Finalizados',
+      valor: numero(finalizados),
+      detalle: 'Completados',
+      tono: 'verde',
+      icono: 'check',
+    },
+  ];
+}
+
+const COLUMNAS_MANTENIMIENTOS = [
+  { campo: 'estado', etiqueta: 'Estado' },
+  { campo: 'id_mantenimiento', etiqueta: 'Nº', clase: 'num' },
+  { campo: 'tipo_trabajo', etiqueta: 'Tipo' },
+  { campo: 'responsable', etiqueta: 'Responsable', clase: 'abonado-corto' },
+  { campo: 'ubicacion', etiqueta: 'Ubicación', clase: 'abonado-corto' },
+  { campo: 'id_incidencia', etiqueta: 'Incidencia', clase: 'num' },
+  { campo: 'fecha_inicio', etiqueta: 'Inicio' },
+  { campo: 'descripcion', etiqueta: 'Descripción', clase: 'texto-largo' },
+];
 
 const CAMPOS_INCIDENCIA = [
   C.medidor({ requerido: true, ancho: true }),
@@ -86,6 +204,12 @@ export default {
       permisos: [P.EJECUTAR_MANTENIMIENTO],
       ruta: '/mantenimientos/mios',
       descripcion: 'Trabajos asignados a usted. Actualice el estado mientras avanza y ciérrelos al terminar.',
+      mensajeVacio: 'No tiene mantenimientos asignados con esos filtros.',
+      placeholderBusqueda: 'Buscar tipo, ubicación o descripción…',
+      transformar: enriquecerMantenimientos,
+      metricas: metricasMantenimientos,
+      columnas: COLUMNAS_MANTENIMIENTOS,
+      ocultar: ['id_empleado', 'id_conexion', 'nombre_trabajo', 'nombre_empleado', 'empleado'],
       filtros: [{ nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.mantenimiento }],
       acciones: ACCIONES_MANTENIMIENTO,
     },
@@ -94,6 +218,12 @@ export default {
       permisos: CONSULTAR,
       ruta: '/incidencias',
       descripcion: 'Fugas, daños y reportes de la red. Incluye cálculo automático de SLA (tiempo objetivo) y prioridad.',
+      mensajeVacio: 'No hay incidencias para los filtros indicados.',
+      placeholderBusqueda: 'Buscar tipo, ubicación, medidor o descripción…',
+      transformar: enriquecerIncidencias,
+      metricas: metricasIncidencias,
+      columnas: COLUMNAS_INCIDENCIAS,
+      ocultar: ['id_conexion', 'id_tipo_incidencia', 'nombre_tipo', 'tipo_incidencia', 'numero_serie'],
       filtros: [
         { nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.incidencia },
         C.tipoIncidencia({ etiqueta: 'Tipo' }),
@@ -178,6 +308,12 @@ export default {
       permisos: CONSULTAR,
       ruta: '/mantenimientos',
       descripcion: 'Todos los trabajos programados, en curso y terminados.',
+      mensajeVacio: 'No hay mantenimientos para los filtros indicados.',
+      placeholderBusqueda: 'Buscar tipo, responsable, ubicación o descripción…',
+      transformar: enriquecerMantenimientos,
+      metricas: metricasMantenimientos,
+      columnas: COLUMNAS_MANTENIMIENTOS,
+      ocultar: ['id_empleado', 'id_conexion', 'nombre_trabajo', 'nombre_empleado', 'empleado'],
       filtros: [
         { nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.mantenimiento },
         C.empleado({ etiqueta: 'Responsable', permisos: GESTIONAR }),
@@ -185,14 +321,14 @@ export default {
       ],
       botones: [
         {
-          texto: 'Programar mantenimiento', primario: true, permisos: GESTIONAR, ruta: '/mantenimientos',
+          texto: 'Programar mantenimiento', primario: true, permisos: GESTIONAR, icono: 'mas', ruta: '/mantenimientos',
           campos: [C.conexion({ requerido: true, ancho: true }), ...CAMPOS_PROGRAMAR,
           { nombre: 'id_incidencia', etiqueta: 'Incidencia relacionada (ID)', tipo: 'number', min: 1 }],
           textoEnviar: 'Programar',
           exito: (r) => `Mantenimiento ${r.salida?.id_mantenimiento} programado.`,
         },
         {
-          texto: 'Plan preventivo masivo', permisos: GESTIONAR, ruta: '/mantenimientos/preventivo-masivo',
+          texto: 'Plan preventivo masivo', permisos: GESTIONAR, icono: 'calendario', ruta: '/mantenimientos/preventivo-masivo',
           mostrarResultado: true,
           titulosResultado: ['Mantenimientos preventivos generados'],
           campos: [
@@ -214,14 +350,16 @@ export default {
       permisos: CONSULTAR,
       ruta: '/mantenimientos/resumen-operativo',
       descripcion: 'Indicadores de cumplimiento de SLA por prioridad, balance de carga e índice de eficiencia por empleado, y conexiones con incidencias recurrentes.',
+      mensajeVacio: 'No hay datos operativos para el rango seleccionado.',
+      placeholderBusqueda: 'Buscar prioridad, empleado o conexión…',
       filtros: [
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date' },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date' },
       ],
       conjuntos: [
-        '1. Cumplimiento de SLA por prioridad de incidencia',
-        '2. Carga activa e índice de eficiencia por empleado',
-        '3. Resumen operativo por conexión (fn_ResumenOperativoConexion)',
+        'Cumplimiento de SLA por prioridad',
+        'Carga e eficiencia por empleado',
+        'Resumen operativo por conexión',
       ],
     },
     {

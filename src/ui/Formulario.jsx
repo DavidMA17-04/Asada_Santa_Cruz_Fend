@@ -6,6 +6,10 @@ import { Select } from '../components/ui/Select.jsx';
 import { Input } from '../components/ui/Input.jsx';
 import { consultarHacienda } from '../motor/hacienda.js';
 
+function esCampoSoloLectura(campo) {
+  return campo.tipo === 'oculto' || campo.tipo === 'info';
+}
+
 function valorInicial(campo, valores) {
   let v = valores[campo.nombre];
   if (v === undefined || v === null) v = typeof campo.valor === 'function' ? campo.valor() : campo.valor;
@@ -18,7 +22,7 @@ function valorInicial(campo, valores) {
 function valoresIniciales(campos, valores) {
   const inicio = {};
   for (const campo of campos) {
-    if (campo.tipo === 'oculto') continue;
+    if (esCampoSoloLectura(campo)) continue;
     inicio[campo.nombre] = valorInicial(campo, valores);
   }
   return inicio;
@@ -27,13 +31,14 @@ function valoresIniciales(campos, valores) {
 function valoresVacios(campos) {
   const vacio = {};
   for (const campo of campos) {
-    if (campo.tipo === 'oculto') continue;
+    if (esCampoSoloLectura(campo)) continue;
     vacio[campo.nombre] = campo.tipo === 'checkbox' ? false : '';
   }
   return vacio;
 }
 
 function leerValor(campo, crudo) {
+  if (campo.tipo === 'info' || campo.tipo === 'oculto') return undefined;
   if (campo.tipo === 'checkbox') return Boolean(crudo);
   if (crudo === '' || crudo === undefined || crudo === null) return undefined;
   const v = typeof crudo === 'string' ? crudo.trim() : crudo;
@@ -44,7 +49,11 @@ function leerValor(campo, crudo) {
   return v;
 }
 
-function CampoSelect({ campo, value, onChange, id, filtros = false }) {
+function valorCatalogo(catalogo, fila) {
+  return typeof catalogo.valor === 'function' ? catalogo.valor(fila) : fila[catalogo.valor];
+}
+
+function CampoSelect({ campo, value, onChange, id, filtros = false, alCargarFilas }) {
   const [opciones, setOpciones] = useState(() => {
     if (!campo.opciones) return [];
     return campo.opciones.map((op) => (typeof op === 'string' ? { valor: op, texto: op } : op));
@@ -61,9 +70,10 @@ function CampoSelect({ campo, value, onChange, id, filtros = false }) {
       .then((filas) => {
         if (!vivo) return;
         const lista = catalogo.filtro ? filas.filter(catalogo.filtro) : filas;
+        alCargarFilas?.(campo.nombre, lista);
         setOpciones(
           lista.map((fila) => ({
-            valor: fila[catalogo.valor],
+            valor: valorCatalogo(catalogo, fila),
             texto: typeof catalogo.texto === 'function' ? catalogo.texto(fila) : fila[catalogo.texto],
           }))
         );
@@ -77,7 +87,7 @@ function CampoSelect({ campo, value, onChange, id, filtros = false }) {
     return () => {
       vivo = false;
     };
-  }, [campo.catalogo?.ruta]);
+  }, [campo.catalogo?.ruta, campo.nombre, alCargarFilas]);
 
   useEffect(() => {
     if (!campo.textoInicial || (value !== '' && value !== undefined && value !== null)) return;
@@ -117,9 +127,17 @@ function Control({
   cargandoHacienda,
   exitoHacienda,
   filtros = false,
+  alCargarFilas,
 }) {
-  const [verContrasena, setVerContrasena] = useState(false);
   const esCampoCedula = /^(numero_identidad|identificacion|cedula)$/i.test(campo.nombre);
+
+  if (campo.tipo === 'info') {
+    return (
+      <div className="campo-info" id={id} role="status">
+        {value}
+      </div>
+    );
+  }
 
   if (campo.tipo === 'textarea') {
     return (
@@ -150,7 +168,16 @@ function Control({
   }
 
   if (campo.opciones || campo.catalogo) {
-    return <CampoSelect campo={campo} value={value} onChange={onChange} id={id} filtros={filtros} />;
+    return (
+      <CampoSelect
+        campo={campo}
+        value={value}
+        onChange={onChange}
+        id={id}
+        filtros={filtros}
+        alCargarFilas={alCargarFilas}
+      />
+    );
   }
 
   if (campo.tipo === 'password') {
@@ -226,14 +253,53 @@ export const Formulario = forwardRef(function Formulario(
     alCambiarBusqueda,
     cuentaRegistros,
     alExportar,
+    placeholderBusqueda = 'Buscar abonado, estado o número…',
   },
   ref
 ) {
   const baseId = useId();
   const visibles = useMemo(() => campos.filter((c) => c.tipo !== 'oculto'), [campos]);
   const [estado, setEstado] = useState(() => valoresIniciales(campos, valores));
+  const [filasCatalogo, setFilasCatalogo] = useState({});
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
+
+  const alCargarFilas = useCallback((nombreCampo, filas) => {
+    setFilasCatalogo((prev) => (prev[nombreCampo] === filas ? prev : { ...prev, [nombreCampo]: filas }));
+  }, []);
+
+  const textoCampoInfo = useCallback((campo) => {
+    if (campo.texto && !campo.textoDesdeFila) return campo.texto;
+    if (campo.textoDesdeFila && campo.desdeCampo) {
+      const filas = filasCatalogo[campo.desdeCampo] || [];
+      const campoOrigen = campos.find((c) => c.nombre === campo.desdeCampo);
+      const valorSel = estado[campo.desdeCampo];
+      if (valorSel === '' || valorSel === undefined || valorSel === null) {
+        return campo.textoVacio || 'Seleccione un valor para ver el detalle.';
+      }
+      const fila = filas.find((f) => {
+        if (!campoOrigen?.catalogo) return false;
+        return String(valorCatalogo(campoOrigen.catalogo, f)) === String(valorSel);
+      });
+      if (!fila) return campo.textoVacio || 'Sin datos de referencia.';
+      return campo.textoDesdeFila(fila);
+    }
+    return campo.texto || '—';
+  }, [campos, estado, filasCatalogo]);
+
+  const etiquetaCampoInfo = useCallback((campo) => {
+    if (campo.textoDesdeFila && campo.desdeCampo) {
+      const filas = filasCatalogo[campo.desdeCampo] || [];
+      const campoOrigen = campos.find((c) => c.nombre === campo.desdeCampo);
+      const valorSel = estado[campo.desdeCampo];
+      const fila = filas.find((f) => {
+        if (!campoOrigen?.catalogo || valorSel === '' || valorSel == null) return false;
+        return String(valorCatalogo(campoOrigen.catalogo, f)) === String(valorSel);
+      });
+      if (fila && typeof campo.etiquetaDesdeFila === 'function') return campo.etiquetaDesdeFila(fila);
+    }
+    return campo.etiqueta ?? etiquetaDe(campo.nombre);
+  }, [campos, estado, filasCatalogo]);
 
   // Estados de consulta de Hacienda para autocompletado en formularios de registro/edición
   const [cargandoHacienda, setCargandoHacienda] = useState(false);
@@ -306,9 +372,21 @@ export const Formulario = forwardRef(function Formulario(
   async function onSubmit(evento) {
     evento.preventDefault();
     setError(null);
+    const datos = leer();
+    for (const campo of visibles) {
+      if (campo.tipo === 'info') continue;
+      if (campo.visibleSi && !campo.visibleSi(actualesParaVisibilidad)) continue;
+      if (typeof campo.validar === 'function') {
+        const mensaje = campo.validar(estado[campo.nombre], estado, { filasCatalogo });
+        if (mensaje) {
+          setError(mensaje);
+          return;
+        }
+      }
+    }
     setEnviando(true);
     try {
-      await alEnviar(leer());
+      await alEnviar(datos);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -338,9 +416,9 @@ export const Formulario = forwardRef(function Formulario(
     >
       {enviando ? (
         <span className="spinner" aria-hidden="true" />
-      ) : filtros ? (
-        <Icono nombre="buscar" tamano={14} />
-      ) : null}
+      ) : (
+        <Icono nombre={filtros ? 'buscar' : 'check'} tamano={15} />
+      )}
       <span>{enviando ? 'Procesando…' : textoEnviar}</span>
     </button>
   );
@@ -372,15 +450,15 @@ export const Formulario = forwardRef(function Formulario(
 
       {/* Si hay búsqueda unificada integrada a los filtros */}
       {filtros && (alCambiarBusqueda || cuentaRegistros !== undefined || alExportar) ? (
-        <div className="filtros-busqueda-fila flex items-center justify-between gap-3">
+        <div className="filtros-busqueda-fila">
           {alCambiarBusqueda ? (
-            <div className="flex-1 min-w-[240px]">
+            <div className="flex-1">
               <Input
                 type="search"
                 variant="pill"
                 icono="buscar"
                 clearable
-                placeholder="Buscar por nombre, correo o valor…"
+                placeholder={placeholderBusqueda}
                 aria-label="Buscar en los resultados"
                 value={terminoBusqueda || ''}
                 onChange={(val) => alCambiarBusqueda(val)}
@@ -389,7 +467,7 @@ export const Formulario = forwardRef(function Formulario(
             </div>
           ) : null}
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="filtros-acciones">
             {cuentaRegistros !== undefined ? (
               <span className="cuenta-filtro-badge">
                 <strong>{cuentaRegistros}</strong> {cuentaRegistros === 1 ? 'registro' : 'registros'}
@@ -415,17 +493,18 @@ export const Formulario = forwardRef(function Formulario(
         {visibles.map((campo) => {
           const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
           const id = `${baseId}-${campo.nombre}`;
+          const etiquetaTexto = campo.tipo === 'info' ? etiquetaCampoInfo(campo) : (campo.etiqueta ?? etiquetaDe(campo.nombre));
           const etiqueta = (
             <label
               htmlFor={id}
               className={
                 filtros
-                  ? 'text-xs font-semibold tracking-wider text-slate-400 uppercase inline-flex items-center gap-1.5 mb-1.5 select-none'
+                  ? 'inline-flex items-center gap-1.5 select-none'
                   : ''
               }
             >
-              {filtros ? <Icono nombre="filtro" tamano={12} className="text-sky-400" /> : null}
-              <span>{campo.etiqueta ?? etiquetaDe(campo.nombre)}</span>
+              {filtros ? <Icono nombre="filtro" tamano={12} /> : null}
+              <span>{etiquetaTexto}</span>
               {campo.requerido ? <span className="requerido"> *</span> : null}
             </label>
           );
@@ -433,12 +512,13 @@ export const Formulario = forwardRef(function Formulario(
             <Control
               campo={campo}
               id={id}
-              value={estado[campo.nombre]}
+              value={campo.tipo === 'info' ? textoCampoInfo(campo) : estado[campo.nombre]}
               onChange={(v) => setEstado((s) => ({ ...s, [campo.nombre]: v }))}
               onBlurCedula={consultarCedulaHacienda}
               cargandoHacienda={cargandoHacienda}
               exitoHacienda={exitoHacienda}
               filtros={filtros}
+              alCargarFilas={alCargarFilas}
             />
           );
           return (

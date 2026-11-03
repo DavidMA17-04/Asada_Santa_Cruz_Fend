@@ -5,6 +5,7 @@ import { C, ESTADOS, fechas } from './comunes.js';
 import {
   COLUMNAS_RUTA_LECTURA,
   accionRegistrarLectura,
+  metricasRutaLectura,
   ordenarRutaLectura,
   seccionFormularioLectura,
 } from './lecturas.js';
@@ -75,9 +76,10 @@ export default {
       pestana: 'Ruta de lectura',
       permisos: [P.REGISTRAR_LECTURA],
       ruta: '/medidores/sin-lectura',
-      descripcion: 'Medidores que todavía no tienen lectura este mes, ordenados por ubicación y serie. Al registrar la lectura el consumo se calcula solo y, si es anómalo, se genera una alerta.',
+      descripcion: 'Medidores pendientes del mes, ordenados por zona y serie. Al leer verá la lectura anterior; el consumo se calcula solo.',
       mensajeVacio: 'Todos los medidores activos ya tienen lectura este mes.',
       transformar: ordenarRutaLectura,
+      metricas: metricasRutaLectura,
       columnas: COLUMNAS_RUTA_LECTURA,
       acciones: [
         accionRegistrarLectura({ texto: 'Leer', permisos: [P.REGISTRAR_LECTURA] }),

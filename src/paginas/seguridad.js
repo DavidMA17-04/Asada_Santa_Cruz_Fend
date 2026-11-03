@@ -1,10 +1,161 @@
 // R6 · Seguridad: empleados, usuarios, roles, permisos y bitácora (CU-6.x).
 import { sesion } from '../api.js';
 import { P } from '../permisos.js';
+import { numero } from '../ui/formato.js';
 import { C, fechas } from './comunes.js';
 
 const GESTIONAR = [P.GESTIONAR_SEGURIDAD];
 const BITACORA = [P.CONSULTAR_BITACORA];
+
+function enriquecerUsuarios(filas = []) {
+  return filas.map((f) => ({
+    ...f,
+    empleado: f.nombre_empleado || f.empleado || '—',
+    rol: f.nombre_rol || f.rol || '—',
+  }));
+}
+
+function metricasUsuarios(filas = []) {
+  const total = filas.length;
+  const activos = filas.filter((f) => f.activo === true || f.activo === 1 || String(f.activo).toLowerCase() === 'true').length;
+  const bloqueados = filas.filter((f) => Number(f.intentos_fallidos) >= 3 || f.activo === false || f.activo === 0).length;
+  const roles = new Set(filas.map((f) => f.nombre_rol || f.rol).filter(Boolean)).size;
+
+  return [
+    {
+      titulo: 'Usuarios',
+      valor: numero(total),
+      detalle: 'Cuentas en la consulta',
+      tono: 'oceano',
+      icono: 'usuarios',
+    },
+    {
+      titulo: 'Activos',
+      valor: numero(activos),
+      detalle: 'Con acceso habilitado',
+      tono: 'verde',
+      icono: 'check',
+    },
+    {
+      titulo: 'En riesgo',
+      valor: numero(bloqueados),
+      detalle: 'Inactivos o con intentos fallidos',
+      tono: bloqueados > 0 ? 'ambar' : 'neutral',
+      icono: 'alerta',
+    },
+    {
+      titulo: 'Roles',
+      valor: numero(roles),
+      detalle: 'Distintos en la lista',
+      tono: 'cielo',
+      icono: 'escudo',
+    },
+  ];
+}
+
+const COLUMNAS_USUARIOS = [
+  { campo: 'activo', etiqueta: 'Estado' },
+  { campo: 'nombre_usuario', etiqueta: 'Usuario' },
+  { campo: 'empleado', etiqueta: 'Empleado', clase: 'abonado-corto' },
+  { campo: 'puesto', etiqueta: 'Puesto' },
+  { campo: 'rol', etiqueta: 'Rol' },
+  { campo: 'intentos_fallidos', etiqueta: 'Intentos', clase: 'num' },
+  { campo: 'fecha_ultimo_acceso', etiqueta: 'Último acceso' },
+];
+
+function metricasBitacora(filas = []) {
+  const total = filas.length;
+  const logins = filas.filter((f) => String(f.accion).toUpperCase() === 'LOGIN').length;
+  const fallidos = filas.filter((f) => /LOGIN_FALLIDO|ERROR|ALERTA/i.test(String(f.accion || ''))).length;
+  const cambios = filas.filter((f) => /^(INSERT|UPDATE|DELETE)$/i.test(String(f.accion || ''))).length;
+
+  return [
+    {
+      titulo: 'Eventos',
+      valor: numero(total),
+      detalle: 'En la consulta',
+      tono: 'oceano',
+      icono: 'lista',
+    },
+    {
+      titulo: 'Inicios de sesión',
+      valor: numero(logins),
+      detalle: 'LOGIN exitosos',
+      tono: 'verde',
+      icono: 'check',
+    },
+    {
+      titulo: 'Cambios en datos',
+      valor: numero(cambios),
+      detalle: 'INSERT / UPDATE / DELETE',
+      tono: 'cielo',
+      icono: 'editar',
+    },
+    {
+      titulo: 'Alertas / fallos',
+      valor: numero(fallidos),
+      detalle: 'LOGIN_FALLIDO u otras alertas',
+      tono: fallidos > 0 ? 'rojo' : 'neutral',
+      icono: 'alerta',
+    },
+  ];
+}
+
+const COLUMNAS_BITACORA = [
+  { campo: 'fecha_registro', etiqueta: 'Fecha' },
+  { campo: 'usuario', etiqueta: 'Usuario' },
+  { campo: 'accion', etiqueta: 'Acción' },
+  { campo: 'tabla_afectada', etiqueta: 'Tabla' },
+  { campo: 'descripcion', etiqueta: 'Descripción', clase: 'texto-largo' },
+];
+
+function metricasActividadUsuario(filas = []) {
+  const total = filas.length;
+  const usuarios = new Set(filas.map((f) => f.usuario || f.nombre_usuario).filter(Boolean)).size;
+  const eventos = filas.reduce((s, f) => s + (Number(f.cantidad) || 0), 0);
+  const logins = filas
+    .filter((f) => String(f.accion).toUpperCase() === 'LOGIN')
+    .reduce((s, f) => s + (Number(f.cantidad) || 0), 0);
+
+  return [
+    {
+      titulo: 'Combinaciones',
+      valor: numero(total),
+      detalle: 'Usuario × acción',
+      tono: 'oceano',
+      icono: 'lista',
+    },
+    {
+      titulo: 'Usuarios',
+      valor: numero(usuarios),
+      detalle: 'Con actividad en el rango',
+      tono: 'cielo',
+      icono: 'usuarios',
+    },
+    {
+      titulo: 'Eventos',
+      valor: numero(eventos),
+      detalle: 'Suma de cantidades',
+      tono: 'marino',
+      icono: 'estadistica',
+    },
+    {
+      titulo: 'Logins',
+      valor: numero(logins),
+      detalle: 'Inicios de sesión',
+      tono: 'verde',
+      icono: 'check',
+    },
+  ];
+}
+
+const COLUMNAS_ACTIVIDAD_USUARIO = [
+  { campo: 'usuario', etiqueta: 'Usuario' },
+  { campo: 'accion', etiqueta: 'Acción' },
+  { campo: 'cantidad', etiqueta: 'Cantidad', clase: 'num' },
+  { campo: 'primera', etiqueta: 'Primera' },
+  { campo: 'ultima', etiqueta: 'Última' },
+];
 // Acciones que escriben los triggers y sp_RegistrarEventoBitacora.
 const ACCIONES_BITACORA = ['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FALLIDO', 'LOGOUT', 'CONSULTA', 'ALERTA', 'RESTORE', 'ETL', 'MANTENIMIENTO', 'PRUEBAS']
   .map((a) => ({ valor: a, texto: a }));
@@ -60,8 +211,16 @@ export default {
       permisos: GESTIONAR,
       ruta: '/seguridad/usuarios',
       descripcion: 'Cuentas de acceso. Tras 3 intentos fallidos la cuenta se bloquea; "Reactivar" también la desbloquea. Su propia cuenta solo la puede desactivar o cambiar de rol otro administrador.',
+      mensajeVacio: 'No hay usuarios registrados.',
+      placeholderBusqueda: 'Buscar usuario, empleado, rol o puesto…',
+      transformar: enriquecerUsuarios,
+      metricas: metricasUsuarios,
+      columnas: COLUMNAS_USUARIOS,
+      ocultar: [
+        'id_usuario_sistema', 'id_rol', 'id_empleado', 'nombre_rol', 'nombre_empleado',
+      ],
       botones: [{
-        texto: 'Nuevo usuario', primario: true, ruta: '/seguridad/usuarios',
+        texto: 'Nuevo usuario', primario: true, icono: 'mas', ruta: '/seguridad/usuarios',
         campos: [
           C.empleado({ requerido: true, ancho: true }),
           C.rol({ requerido: true }),
@@ -242,6 +401,10 @@ export default {
       ruta: '/seguridad/bitacora',
       descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo. Es de solo lectura.',
       mensajeVacio: 'No hay registros que cumplan los filtros.',
+      placeholderBusqueda: 'Buscar usuario, acción, tabla o descripción…',
+      metricas: metricasBitacora,
+      columnas: COLUMNAS_BITACORA,
+      ocultar: ['id_bitacora', 'id_usuario_sistema'],
       filtros: [
         // CU-6.7: filtro por usuario. La lista de usuarios solo la ve quien gestiona la seguridad.
         {
@@ -258,6 +421,12 @@ export default {
       titulo: 'Actividad por usuario',
       permisos: BITACORA,
       ruta: '/seguridad/bitacora/resumen',
+      descripcion: 'Resumen de eventos de bitácora agrupados por usuario y acción en el rango de fechas.',
+      mensajeVacio: 'No hay actividad para el rango indicado.',
+      placeholderBusqueda: 'Buscar usuario o acción…',
+      metricas: metricasActividadUsuario,
+      columnas: COLUMNAS_ACTIVIDAD_USUARIO,
+      ocultar: ['id_usuario_sistema', 'nombre_usuario'],
       filtros: [
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date', requerido: true, valor: fechas.inicioMes },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date', requerido: true, valor: fechas.hoy },

@@ -78,6 +78,7 @@ export function camposRegistroLectura(opts = {}) {
       desdeCampo: 'id_medidor',
       textoVacio: 'Seleccione un medidor para ver la lectura anterior o inicial.',
       textoDesdeFila: textoReferenciaLectura,
+      etiquetaDesdeFila: (fila) => referenciaLectura(fila)?.etiqueta || 'Referencia de lectura',
     }];
 
   return [
@@ -216,17 +217,62 @@ export function lecturaFacturada(fila) {
   return fila?.id_factura !== null && fila?.id_factura !== undefined && fila?.id_factura !== '';
 }
 
+/** KPIs del tablero de ruta (pendientes del mes). */
+export function metricasRutaLectura(filas = []) {
+  const total = filas.length;
+  const urgentes = filas.filter((f) => Number(f.dias_sin_lectura) >= 40).length;
+  const zonas = new Set(filas.map((f) => f.ubicacion).filter(Boolean)).size;
+  const sumaDias = filas.reduce((s, f) => s + (Number(f.dias_sin_lectura) || 0), 0);
+  const promedio = total ? Math.round(sumaDias / total) : 0;
+
+  return [
+    {
+      titulo: 'Pendientes',
+      valor: numero(total),
+      detalle: 'Sin lectura este mes',
+      tono: 'oceano',
+      icono: 'medidor',
+    },
+    {
+      titulo: 'Urgentes',
+      valor: numero(urgentes),
+      detalle: '40 días o más sin lectura',
+      tono: urgentes > 0 ? 'rojo' : 'verde',
+      icono: 'alerta',
+    },
+    {
+      titulo: 'Zonas',
+      valor: numero(zonas),
+      detalle: 'En la ruta actual',
+      tono: 'verde',
+      icono: 'lista',
+    },
+    {
+      titulo: 'Promedio atraso',
+      valor: `${numero(promedio)} d`,
+      detalle: 'Días sin lectura',
+      tono: promedio >= 40 ? 'rojo' : promedio >= 25 ? 'ambar' : 'cielo',
+      icono: 'reloj',
+    },
+  ];
+}
+
 /** Columnas de la ruta de lectura (sin IDs técnicos). */
 export const COLUMNAS_RUTA_LECTURA = [
   { campo: 'ubicacion', etiqueta: 'Zona' },
   { campo: 'numero_serie', etiqueta: 'Medidor' },
   { campo: 'abonado', etiqueta: 'Abonado', clase: 'abonado-corto' },
-  { campo: 'ultima_lectura', etiqueta: `Última (${UNIDAD_LECTURA})`, clase: 'num' },
-  { campo: 'fecha_ultima_lectura', etiqueta: 'Fecha última' },
+  { campo: 'ultima_lectura', etiqueta: `Lectura anterior (${UNIDAD_LECTURA})`, clase: 'num' },
+  { campo: 'fecha_ultima_lectura', etiqueta: 'Fecha anterior' },
   {
     campo: 'dias_sin_lectura',
     etiqueta: 'Días sin lectura',
-    clase: (f) => (Number(f.dias_sin_lectura) >= 40 ? 'num dias-atraso' : 'num'),
+    clase: (f) => {
+      const d = Number(f.dias_sin_lectura);
+      if (d >= 40) return 'num dias-atraso';
+      if (d >= 25) return 'num aviso-dias';
+      return 'num';
+    },
   },
 ];
 

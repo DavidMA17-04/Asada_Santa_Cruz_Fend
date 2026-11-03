@@ -9,19 +9,35 @@ import {
   Icono,
   Tabla,
   TableroDiagnosticoSLA,
+  MetricCard,
   MetricsSummary,
   UnifiedFilterBar,
 } from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
+
+function tonoDesdeClase(clase = '') {
+  const c = String(clase).toLowerCase();
+  if (/\brojo\b/.test(c)) return 'rojo';
+  if (/\bverde\b/.test(c)) return 'verde';
+  if (/\bambar\b|\bámbar\b/.test(c)) return 'ambar';
+  if (/\bgrande\b/.test(c)) return 'oceano';
+  return 'marino';
+}
 
 
 function estiloAccion(b = {}) {
   let icono = b.icono;
   let claseTono = '';
   const texto = String(b.texto || '').toLowerCase();
-  if (b.peligro || /eliminar|desactivar|baja|anular/i.test(texto)) {
+  if (b.peligro || /eliminar|desactivar|baja|anular|suspender/i.test(texto)) {
     icono = icono || 'peligro';
     claseTono = 'peligro';
+  } else if (/reactivar|restaurar|habilitar/i.test(texto)) {
+    icono = icono || 'check';
+    claseTono = 'exito';
+  } else if (/simular/i.test(texto)) {
+    icono = icono || 'ojo';
+    claseTono = 'secundario';
   } else if (/editar|modificar/i.test(texto)) {
     icono = icono || 'editar';
     claseTono = 'secundario';
@@ -59,34 +75,68 @@ function segmentosPastel(filas, config) {
   }));
 }
 
-function BloqueTabla({ filas, opciones = {} }) {
+function DetalleRegistro({ fila, ordenCampos }) {
+  const claves = Object.keys(fila || {});
+  const ordenadas = [
+    ...(ordenCampos || []).filter((c) => claves.includes(c)),
+    ...claves.filter((c) => !(ordenCampos || []).includes(c)),
+  ];
+  return (
+    <div className="resumen-salida detalle-registro">
+      {ordenadas.map((campo) => {
+        const { contenido } = formatearCelda(campo, fila[campo]);
+        return (
+          <div key={campo} className={campo === 'saldo' ? 'detalle-destacado' : undefined}>
+            {etiquetaDe(campo)}
+            <b>{contenido}</b>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function BloqueTabla({ filas, opciones = {}, comoDetalle = false, ordenCampos }) {
   if (filas.length === 1 && Object.keys(filas[0]).length === 1) {
     const valor = Object.values(filas[0])[0];
     if (typeof valor === 'string' && (valor.length > 120 || TEXTO_SCRIPT.test(valor))) {
       return <pre className="script">{valor}</pre>;
     }
   }
+  // Una sola fila en vista de detalle (p. ej. Ver saldo): ficha, no tabla con buscar/CSV.
+  if (comoDetalle || (filas.length === 1 && opciones.comoDetalle)) {
+    return <DetalleRegistro fila={filas[0]} ordenCampos={ordenCampos || opciones.ordenCampos} />;
+  }
   return <Tabla filas={filas} {...opciones} />;
 }
 
-export function VistaResultado({ r, titulos = [] }) {
+export function VistaResultado({ r, titulos = [], comoDetalle = false, ordenCampos }) {
   const partes = [];
   const salida = Object.entries(r.salida || {});
   if (salida.length) {
     partes.push(
       <div className="resumen-salida" key="salida">
-        {salida.map(([k, v]) => (
-          <div key={k}>{etiquetaDe(k)}<b>{v === null ? '—' : String(v)}</b></div>
-        ))}
+        {salida.map(([k, v]) => {
+          const { contenido } = formatearCelda(k, v);
+          return <div key={k}>{etiquetaDe(k)}<b>{contenido}</b></div>;
+        })}
       </div>,
     );
   }
   const conjuntos = (r.conjuntos || [r.datos || []]).filter((c) => c.length);
+  const detalle = comoDetalle || conjuntos.every((c) => c.length === 1);
   conjuntos.forEach((filas, i) => {
     if (conjuntos.length > 1 || titulos[i]) {
       partes.push(<h3 key={`t-${i}`}>{titulos[i] || `Resultado ${i + 1}`}</h3>);
     }
-    partes.push(<BloqueTabla key={`b-${i}`} filas={filas} />);
+    partes.push(
+      <BloqueTabla
+        key={`b-${i}`}
+        filas={filas}
+        comoDetalle={detalle}
+        ordenCampos={ordenCampos}
+      />,
+    );
   });
   if (!partes.length) {
     partes.push(<p className="descripcion" key="vacio">La operación terminó sin datos que mostrar.</p>);
@@ -98,12 +148,15 @@ function mostrarResultado(titulo, r, titulos) {
   abrirModal(titulo, <VistaResultado r={r} titulos={titulos} />, { tamano: 'ancho' });
 }
 
-export async function ejecutarAccion(accion, fila, recargar) {
-  try {
-    const metodo = accion.metodo || 'POST';
-    const ruta = resolver(accion.ruta, fila || {});
-    const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
+const accionesEnVuelo = new Set();
 
+export async function ejecutarAccion(accion, fila, recargar) {
+  const metodo = accion.metodo || 'POST';
+  const ruta = resolver(accion.ruta, fila || {});
+  const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
+  const llaveVuelo = `${metodo}:${ruta}:${accion.texto || ''}`;
+
+  try {
     if (metodo === 'GET') {
       const esDetalle = !accion.acciones && !accion.columnas && !accion.botones && !accion.filtros;
       const modal = abrirModal(titulo, <div className="cargando">Cargando…</div>, { tamano: esDetalle ? 'chico' : 'ancho' });
@@ -111,7 +164,14 @@ export async function ejecutarAccion(accion, fila, recargar) {
         try {
           const r = await obtener(ruta);
           if (esDetalle) {
-            modal.reemplazar(<VistaResultado r={r} titulos={accion.titulosResultado} />);
+            modal.reemplazar(
+              <VistaResultado
+                r={r}
+                titulos={accion.titulosResultado}
+                comoDetalle={accion.comoDetalle !== false}
+                ordenCampos={accion.ordenCampos}
+              />,
+            );
             return;
           }
           modal.reemplazar(
@@ -135,10 +195,16 @@ export async function ejecutarAccion(accion, fila, recargar) {
     }
 
     const enviar = async (datos) => {
-      const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
-      avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
-      if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
-      recargar?.();
+      if (accionesEnVuelo.has(llaveVuelo)) return;
+      accionesEnVuelo.add(llaveVuelo);
+      try {
+        const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
+        avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
+        if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
+        recargar?.();
+      } finally {
+        accionesEnVuelo.delete(llaveVuelo);
+      }
     };
 
     if (accion.campos) {
@@ -175,6 +241,7 @@ export async function ejecutarAccion(accion, fila, recargar) {
     }
     await enviar({});
   } catch (err) {
+    accionesEnVuelo.delete(llaveVuelo);
     avisar(err.message || 'No se pudo ejecutar la acción.', 'error');
   }
 }
@@ -334,12 +401,16 @@ function SeccionConsulta({ sec, pagina }) {
       {/* 1. Título y descripción del módulo con botón de acción rápida superior */}
       <Encabezado sec={sec} pagina={pagina} herramientas={herramientas} />
 
-      {/* 2. Resumen métrico de estados (conteo numérico por categoría sin gráficas) */}
+      {/* 2. Resumen métrico (sección o auto desde estados) */}
       {resultado?.datos?.length ? (
-        <MetricsSummary filas={resultado.datos} tituloModulo={sec.titulo} />
+        <MetricsSummary
+          filas={resultado.datos}
+          tituloModulo={sec.titulo}
+          metricas={typeof sec.metricas === 'function' ? sec.metricas(resultado.datos) : sec.metricas}
+        />
       ) : null}
 
-      {/* 3. Barra de filtros unificada (Búsqueda + Selects + Contador de registros + Botón Exportar CSV) */}
+      {/* 3. Barra de filtros / búsqueda */}
       {campos.length ? (
         <Formulario
           key={sec.ruta}
@@ -352,6 +423,7 @@ function SeccionConsulta({ sec, pagina }) {
           terminoBusqueda={terminoBusqueda}
           alCambiarBusqueda={setTerminoBusqueda}
           cuentaRegistros={totalRegistrosActual}
+          placeholderBusqueda={sec.placeholderBusqueda || 'Buscar abonado, estado o número…'}
         />
       ) : (
         <UnifiedFilterBar
@@ -359,7 +431,8 @@ function SeccionConsulta({ sec, pagina }) {
           alCambiarBusqueda={setTerminoBusqueda}
           totalRegistros={totalRegistrosActual}
           alExportarCsv={tieneDatos ? () => exportarRef.current?.() : null}
-          placeholderBusqueda="Filtrar en los resultados…"
+          placeholderBusqueda={sec.placeholderBusqueda || 'Buscar abonado, estado o número…'}
+          mostrarCabecera={false}
         />
       )}
 
@@ -435,9 +508,6 @@ function SeccionResumen({ sec, pagina }) {
       });
     };
 
-    const tonosRotacion = ['azul', 'coral', 'menta'];
-    let idxTarjeta = 0;
-
     grupos.forEach((grupo) => {
       (grupo.tarjetas || []).forEach((t) => {
         const valor = t.calcular ? t.calcular(fila) : fila[t.campo];
@@ -450,15 +520,14 @@ function SeccionResumen({ sec, pagina }) {
           valor: valorFormateado,
           detalle: t.ayuda || '',
         });
-        if (tarjetasDestacadas.length < 3) {
+        if (tarjetasDestacadas.length < 6) {
           tarjetasDestacadas.push({
-            tono: tonosRotacion[idxTarjeta % tonosRotacion.length],
-            icono: t.icono || 'moneda',
+            tono: tonoDesdeClase(t.clase),
+            icono: t.icono || 'estadistica',
             titulo: tituloInd,
             valor: valorFormateado,
-            subtitulo: t.ayuda || grupo.titulo || 'Resumen de cartera',
+            detalle: t.ayuda || grupo.titulo || 'Resumen de cartera',
           });
-          idxTarjeta += 1;
         }
       });
       if (grupo.barra) agregarBarra(grupo.barra, grupo.titulo || 'Resumen');
@@ -491,18 +560,16 @@ function SeccionResumen({ sec, pagina }) {
       {!cargando && !error && fila ? (
         <div className="resultado">
           {tarjetasDestacadas.length ? (
-            <div className="tarjetas-repositorio-grid">
+            <div className="metricas-resumen-grid">
               {tarjetasDestacadas.map((t, i) => (
-                <div className="tarjeta-repositorio" key={i}>
-                  <div className={`tarjeta-repositorio-icono tono-${t.tono}`}>
-                    <Icono nombre={t.icono} />
-                  </div>
-                  <div className="tarjeta-repositorio-info">
-                    <span className="tarjeta-repositorio-titulo">{t.titulo}</span>
-                    <strong className="tarjeta-repositorio-valor">{t.valor}</strong>
-                    <small className="tarjeta-repositorio-sub">{t.subtitulo}</small>
-                  </div>
-                </div>
+                <MetricCard
+                  key={`${t.titulo}-${i}`}
+                  titulo={t.titulo}
+                  valor={t.valor}
+                  detalle={t.detalle}
+                  icono={t.icono}
+                  tono={t.tono}
+                />
               ))}
             </div>
           ) : null}

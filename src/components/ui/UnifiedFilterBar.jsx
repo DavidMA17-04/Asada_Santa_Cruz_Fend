@@ -88,7 +88,7 @@ export function UnifiedFilterBar({
 
         {/* Indicador numérico de registros y botón de exportar si no hay cabecera */}
         <div className="flex items-center justify-between lg:justify-end gap-3 shrink-0">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 whitespace-nowrap">
+          <span className="cuenta-filtro-badge">
             <strong>{totalRegistros}</strong> {totalRegistros === 1 ? 'registro' : 'registros'}
           </span>
 
