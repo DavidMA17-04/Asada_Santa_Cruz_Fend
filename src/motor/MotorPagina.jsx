@@ -9,6 +9,8 @@ import {
   Icono,
   Tabla,
   TableroDiagnosticoSLA,
+  TarjetasMisMantenimientos,
+  TimelineHistorial,
   MetricCard,
   MetricsSummary,
   UnifiedFilterBar,
@@ -103,6 +105,15 @@ function BloqueTabla({ filas, opciones = {}, comoDetalle = false, ordenCampos })
       return <pre className="script">{valor}</pre>;
     }
   }
+  // Si las filas corresponden a un historial
+  if (
+    filas.length > 0 &&
+    (filas[0].id_historial_mantenimiento !== undefined ||
+      filas[0].id_historial_incidencia !== undefined ||
+      (filas[0].fecha_evento !== undefined && filas[0].estado_actual !== undefined))
+  ) {
+    return <TimelineHistorial eventos={filas} />;
+  }
   // Una sola fila en vista de detalle (p. ej. Ver saldo): ficha, no tabla con buscar/CSV.
   if (comoDetalle || (filas.length === 1 && opciones.comoDetalle)) {
     return <DetalleRegistro fila={filas[0]} ordenCampos={ordenCampos || opciones.ordenCampos} />;
@@ -111,6 +122,15 @@ function BloqueTabla({ filas, opciones = {}, comoDetalle = false, ordenCampos })
 }
 
 export function VistaResultado({ r, titulos = [], comoDetalle = false, ordenCampos }) {
+  const primeraFila = (r.datos?.[0] || r.conjuntos?.[0]?.[0]);
+  if (
+    primeraFila &&
+    (primeraFila.id_historial_mantenimiento !== undefined ||
+      primeraFila.id_historial_incidencia !== undefined ||
+      (primeraFila.fecha_evento !== undefined && primeraFila.estado_actual !== undefined))
+  ) {
+    return <TimelineHistorial r={r} />;
+  }
   const partes = [];
   const salida = Object.entries(r.salida || {});
   if (salida.length) {
@@ -151,6 +171,9 @@ function mostrarResultado(titulo, r, titulos) {
 const accionesEnVuelo = new Set();
 
 export async function ejecutarAccion(accion, fila, recargar) {
+  if (typeof accion.ejecutar === 'function') {
+    return accion.ejecutar(fila, recargar);
+  }
   const metodo = accion.metodo || 'POST';
   const ruta = resolver(accion.ruta, fila || {});
   const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
@@ -158,11 +181,25 @@ export async function ejecutarAccion(accion, fila, recargar) {
 
   try {
     if (metodo === 'GET') {
+      const esHistorial = Boolean(
+        ruta.includes('/historial') ||
+        accion.esHistorial ||
+        /historial/i.test(accion.texto || '') ||
+        /historial/i.test(titulo || '')
+      );
       const esDetalle = !accion.acciones && !accion.columnas && !accion.botones && !accion.filtros;
-      const modal = abrirModal(titulo, <div className="cargando">Cargando…</div>, { tamano: esDetalle ? 'chico' : 'ancho' });
+      const modal = abrirModal(
+        titulo,
+        <div className="cargando">Cargando…</div>,
+        { tamano: esHistorial ? 'mediano' : (esDetalle ? 'chico' : 'ancho') }
+      );
       const cargar = async () => {
         try {
           const r = await obtener(ruta);
+          if (esHistorial) {
+            modal.reemplazar(<TimelineHistorial r={r} />);
+            return;
+          }
           if (esDetalle) {
             modal.reemplazar(
               <VistaResultado
@@ -198,7 +235,8 @@ export async function ejecutarAccion(accion, fila, recargar) {
       if (accionesEnVuelo.has(llaveVuelo)) return;
       accionesEnVuelo.add(llaveVuelo);
       try {
-        const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
+        const cuerpoBase = typeof accion.cuerpo === 'function' ? accion.cuerpo(fila || {}) : (accion.cuerpo || {});
+        const r = await api(metodo, ruta, { ...cuerpoBase, ...datos });
         avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
         if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
         recargar?.();
@@ -246,6 +284,10 @@ export async function ejecutarAccion(accion, fila, recargar) {
   }
 }
 
+if (typeof window !== 'undefined') {
+  window.ejecutarAccionGlobal = ejecutarAccion;
+}
+
 function Botones({ lista, recargar }) {
   return permitidos(lista).map((b) => {
     const { icono: ic, claseTono } = estiloAccion(b);
@@ -271,10 +313,6 @@ function ContenidoConsulta({
   alCambiarBusqueda,
   exportarRef,
 }) {
-  if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
-    return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
-  }
-
   const acciones = permitidos(def.acciones);
   const opciones = {
     acciones,
@@ -289,6 +327,21 @@ function ContenidoConsulta({
     ocultarHerramientas: Boolean(exportarRef || alCambiarBusqueda),
   };
   const botones = permitidos(def.botones || []);
+
+  if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
+    return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
+  }
+
+  if (def.ruta === '/mantenimientos/mios') {
+    return (
+      <TarjetasMisMantenimientos
+        filas={r.datos || []}
+        alAccion={(a, fila) => ejecutarAccion(a, fila, recargar)}
+        recargar={recargar}
+        opciones={opciones}
+      />
+    );
+  }
 
   return (
     <div className="modal-cuerpo-interno">

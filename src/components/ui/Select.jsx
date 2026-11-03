@@ -90,20 +90,23 @@ export function Select({
         </span>
       </button>
 
-      {/* Menú flotante moderno */}
+      {/* Menú flotante moderno sin barras toscas */}
       {abierto && !disabled ? (
         <div
-          className="absolute z-50 left-0 mt-1.5 w-full min-w-[180px] max-h-60 overflow-y-auto rounded-xl
+          className="select-menu-flotante absolute z-50 left-0 mt-1.5 w-full min-w-[180px] max-h-60 overflow-y-auto rounded-xl
             bg-[var(--superficie)] border border-[var(--borde)] shadow-xl py-1 backdrop-blur-md"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {!required && (
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 onChange?.('');
                 setAbierto(false);
               }}
-              className={`w-full text-left px-3.5 py-2 text-xs text-[var(--texto-suave)] dark:text-slate-400 hover:bg-sky-500/10 hover:text-sky-400 transition-colors flex items-center justify-between cursor-pointer
+              className={`select-menu-item w-full text-left px-3.5 py-2 text-xs text-[var(--texto-suave)] hover:bg-sky-500/10 hover:text-sky-400 transition-colors flex items-center justify-between cursor-pointer
                 ${!tieneValor ? 'font-semibold text-sky-400 bg-sky-500/5' : ''}`}
             >
               <span>{placeholder}</span>
@@ -117,11 +120,13 @@ export function Select({
               <button
                 key={String(op.valor)}
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   onChange?.(op.valor);
                   setAbierto(false);
                 }}
-                className={`w-full text-left px-3.5 py-2 text-sm transition-colors flex items-center justify-between cursor-pointer
+                className={`select-menu-item w-full text-left px-3.5 py-2 text-sm transition-colors flex items-center justify-between cursor-pointer
                   hover:bg-sky-500/10 hover:text-sky-400
                   ${estaActivo ? 'bg-sky-500/10 text-sky-400 font-semibold' : 'text-[var(--texto)] dark:text-slate-200'}`}
               >

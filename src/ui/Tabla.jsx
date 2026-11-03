@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { etiquetaDe, formatearCelda } from './formato.js';
+import { avisar } from './registro.js';
 import { BadgeStatus } from '../components/ui/BadgeStatus.jsx';
+import { BadgeSLA } from '../components/ui/BadgeSLA.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Pagination } from '../components/ui/Pagination.jsx';
 import { Input } from '../components/ui/Input.jsx';
@@ -110,38 +112,107 @@ function MenuAccionesFila({ acciones, fila, alAccion }) {
   );
 }
 
-const ES_COLUMNA_CANTIDAD = /^(cantidad|cant|total_incidencias|mantenimientos_finalizados|cantidad_pagos|total_pagos|intentos|intentos_fallidos|medidores_activos|usuarios_activos|mes|anio|periodo|dias|dias_desde|dias_hasta)$/i;
+const ES_COLUMNA_CANTIDAD = /^(id|id_\w+|nº|num|numero|cantidad|cant|total\w*|mantenimientos_\w*|abiertas\w*|resueltas|en_tiempo|por_vencer|vencidas\w*|intentos\w*|medidores_\w*|usuarios_\w*|mes|anio|año|periodo|dias\w*|horas\w*|sla\w*|promedio\w*|porcentaje|lectura\w*|consumo|prioridad|estado\w*|activo)$/i;
 
 function esColumnaCentrada(campo, etiqueta) {
   const c = String(campo || '').toLowerCase();
   const e = String(etiqueta || '').toLowerCase();
   if (c.includes('cantidad') || e.includes('cantidad')) return true;
+  if (c.startsWith('fecha') || e.includes('fecha')) return true;
   if (ES_COLUMNA_CANTIDAD.test(c)) return true;
-  if (/^(cant|intentos|num|numero|mes|año|anio|total)/i.test(e)) return true;
+  if (/^(nº|num|núm|número|id|total|abiertas|resueltas|en tiempo|por vencer|vencidas|sla|horas|promedio|días|dias|mes|año|anio|prioridad|estado|semáforo|semaforo)/i.test(e)) return true;
   return false;
 }
 
-function aCsv(columnas, filas) {
+function arreglarMojibake(texto) {
+  if (!texto || typeof texto !== 'string') return texto;
+  return texto
+    .replace(/Ã¡/g, 'á')
+    .replace(/Ã©/g, 'é')
+    .replace(/\u00c3\u00ad/g, 'í')
+    .replace(/Ã­/g, 'í')
+    .replace(/Ã³/g, 'ó')
+    .replace(/Ãº/g, 'ú')
+    .replace(/Ã±/g, 'ñ')
+    .replace(/Ã /g, 'Á')
+    .replace(/Ã‰/g, 'É')
+    .replace(/Ã /g, 'Í')
+    .replace(/Ã“/g, 'Ó')
+    .replace(/Ãš/g, 'Ú')
+    .replace(/Ã‘/g, 'Ñ')
+    .replace(/Âº/g, 'º')
+    .replace(/Âª/g, 'ª')
+    .replace(/Â/g, '');
+}
+
+function formatearValorCsv(valor, campo) {
+  if (valor === null || valor === undefined) return '';
+  if (typeof valor === 'boolean') return valor ? 'Sí' : 'No';
+  if (typeof valor === 'number') return String(valor);
+  if (typeof valor === 'string') {
+    // Si es fecha ISO con hora (e.g. 2026-11-02 18:00 o 2026-11-03T10:09:00.000Z)
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(valor)) {
+      const d = new Date(valor);
+      if (!Number.isNaN(d.getTime())) {
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const min = String(d.getMinutes()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      }
+    }
+    return arreglarMojibake(valor.trim());
+  }
+  return String(valor);
+}
+
+function aCsv(columnas, filas, separador = ';') {
   const escapar = (v) => {
-    const t = v === null || v === undefined ? '' : String(v);
-    return /[",\n;]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+    let t = v === null || v === undefined ? '' : String(v);
+    t = arreglarMojibake(t);
+    // Si contiene comillas dobles, saltos de línea o el separador (;), se encierra entre comillas
+    if (t.includes('"') || t.includes('\n') || t.includes('\r') || t.includes(separador)) {
+      return `"${t.replace(/"/g, '""')}"`;
+    }
+    return t;
   };
-  return [
-    columnas.map((c) => escapar(c.etiqueta)).join(','),
-    ...filas.map((f) => columnas.map((c) => escapar(f[c.campo])).join(',')),
-  ].join('\r\n');
+
+  const lineas = [
+    'sep=' + separador,
+    columnas.map((c) => escapar(c.etiqueta || etiquetaDe(c.campo))).join(separador),
+    ...filas.map((f) => columnas.map((c) => escapar(formatearValorCsv(f[c.campo], c.campo))).join(separador)),
+  ];
+  return lineas.join('\r\n');
 }
 
 export function descargarCsv(nombre, columnas, filas) {
+  if (!filas || filas.length === 0) {
+    avisar('No hay datos para exportar con los filtros seleccionados.', 'alerta');
+    return;
+  }
+  const fechaHoy = new Date().toISOString().slice(0, 10);
+  const nombreLimpio = String(nombre || 'datos')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  const nombreArchivoFinal = `ASADA_${nombreLimpio}_${fechaHoy}.csv`;
+
   const csv = aCsv(columnas, filas);
-  const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }));
+  const blob = new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `${nombre}.csv`;
+  a.download = nombreArchivoFinal;
   document.body.append(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+
+  avisar(`Reporte CSV descargado con éxito (${filas.length} ${filas.length === 1 ? 'registro' : 'registros'}).`, 'exito');
 }
 
 export function Tabla({
@@ -315,6 +386,20 @@ export function Tabla({
                   className="hover:bg-sky-500/5 transition-colors group"
                 >
                   {cols.map((c) => {
+                    // SLA: insignia con semáforo dinámico
+                    if (c.campo === 'estado_sla' || c.campo === 'sla' || c.campo === 'sla_horas') {
+                      return (
+                        <td key={c.campo} className="tabla-td whitespace-nowrap">
+                          <BadgeSLA
+                            estadoSla={fila.estado_sla}
+                            horasResolucion={fila.horas_resolucion}
+                            slaHoras={fila.sla_horas}
+                            estadoIncidencia={fila.estado}
+                          />
+                        </td>
+                      );
+                    }
+
                     // Estado / prioridad: insignia con color
                     if (
                       c.campo === 'activo'
