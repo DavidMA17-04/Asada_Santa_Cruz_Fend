@@ -18,6 +18,17 @@ export function UnifiedFilterBar({
 }) {
   // Manejo de debounce para la búsqueda de texto sin mutar estado abruptamente
   const [textoLocal, setTextoLocal] = useState(terminoBusqueda);
+  const [exportando, setExportando] = useState(false);
+
+  const handleExportar = async () => {
+    if (exportando || !alExportarCsv) return;
+    setExportando(true);
+    try {
+      await alExportarCsv();
+    } finally {
+      setTimeout(() => setExportando(false), 2000);
+    }
+  };
 
   useEffect(() => {
     setTextoLocal(terminoBusqueda);
@@ -93,14 +104,20 @@ export function UnifiedFilterBar({
           </span>
 
           {alExportarCsv ? (
-            <Button
-              variant="export"
-              onClick={alExportarCsv}
-              disabled={cargando || totalRegistros === 0}
-              title="Descargar datos en formato CSV"
+            <button
+              type="button"
+              onClick={handleExportar}
+              disabled={cargando || totalRegistros === 0 || exportando}
+              className={`boton-exportar-pill ${exportando ? 'descargado' : ''}`}
+              title="Descargar reporte en formato CSV compatible con Excel y Google Sheets"
             >
-              Exportar CSV
-            </Button>
+              <Icono
+                nombre={exportando ? 'check' : 'descargar'}
+                tamano={13}
+                className={exportando ? 'text-emerald-400' : 'text-emerald-500'}
+              />
+              <span>{exportando ? '¡Descargado!' : 'Exportar CSV'}</span>
+            </button>
           ) : null}
         </div>
       </div>

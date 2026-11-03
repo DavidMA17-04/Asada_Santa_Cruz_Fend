@@ -2509,10 +2509,11 @@ td.fecha {
 }
 
 td.texto-largo {
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  min-width: 180px;
+  max-width: 380px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.45;
 }
 
 .tabla-td {
@@ -2859,6 +2860,58 @@ th.th-acciones,
   background: transparent;
   border-color: #38bdf8;
   color: #0369a1;
+}
+
+/* Semáforo SLA adaptive */
+.badge-sla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.badge-sla.verde {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+:root[data-tema="oscuro"] .badge-sla.verde {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(52, 211, 153, 0.35);
+  color: #34d399;
+}
+
+.badge-sla.ambar {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+}
+:root[data-tema="oscuro"] .badge-sla.ambar {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(251, 191, 36, 0.35);
+  color: #fbbf24;
+}
+
+.badge-sla.rojo {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #9f1239;
+}
+:root[data-tema="oscuro"] .badge-sla.rojo {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(251, 113, 133, 0.4);
+  color: #fda4af;
+}
+
+.badge-sla.neutral {
+  background: var(--superficie-2);
+  border: 1px solid var(--borde);
+  color: var(--texto-suave);
 }
 
 /* Acciones de tabla (Ver / Editar / Eliminar) */
@@ -3232,11 +3285,12 @@ pre.script {
 }
 
 .abonado-corto {
-  max-width: 180px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-weight: 600;
+  min-width: 140px;
+  max-width: 280px;
+  white-space: normal;
+  word-break: break-word;
+  font-weight: 500;
+  line-height: 1.4;
 }
 
 .saldo-pendiente {
@@ -3529,4 +3583,534 @@ pre.script {
   .acceso-rapido-grid {
     grid-template-columns: 1fr;
   }
+}
+/* ---------- Botón Actualizar Pill Modernizado ---------- */
+.boton-actualizar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  border-radius: 9999px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  color: var(--texto);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.boton-actualizar-pill:hover {
+  background: var(--superficie-2);
+  border-color: var(--acento);
+  color: var(--acento);
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.18);
+  transform: translateY(-1px);
+}
+
+.boton-actualizar-pill:active {
+  transform: translateY(0);
+}
+
+.boton-actualizar-pill svg,
+.boton-actualizar-pill .icono {
+  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: var(--acento);
+}
+
+.boton-actualizar-pill:hover svg,
+.boton-actualizar-pill:hover .icono {
+  transform: rotate(180deg);
+}
+
+/* Alineación estricta y centrado en tablas */
+.col-cantidad,
+td.col-cantidad,
+th.col-cantidad {
+  text-align: center !important;
+}
+
+td.col-cantidad > div {
+  margin: 0 auto;
+}
+
+/* Mejora visual en tarjetas de métricas */
+.metric-card {
+  border-top: 3px solid currentColor !important;
+  background: linear-gradient(180deg, var(--superficie) 0%, var(--superficie-2) 100%) !important;
+}
+
+
+/* ==========================================================
+   DISEÑO MINIMALISTA Y LIMPIO (Menos cargado, máxima claridad)
+   ========================================================== */
+
+/* 1. Tarjetas métricas minimalistas y elegantes */
+.metric-card {
+  border: 1px solid var(--borde) !important;
+  border-top: 1px solid var(--borde) !important;
+  border-radius: 14px !important;
+  background: var(--superficie) !important;
+  box-shadow: none !important;
+  padding: 14px 18px !important;
+  min-height: 80px !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.metric-card::before {
+  display: none !important;
+}
+
+.metric-card:hover {
+  transform: none !important;
+  border-color: var(--borde-fuerte) !important;
+  box-shadow: none !important;
+}
+
+.metric-card-cuerpo {
+  gap: 2px !important;
+}
+
+.metric-card-titulo {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--texto-suave) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  opacity: 1 !important;
+}
+
+.metric-card-valor {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: var(--texto) !important;
+  letter-spacing: -0.02em !important;
+  line-height: 1.2 !important;
+}
+
+.metric-card-detalle {
+  font-size: 11px !important;
+  color: var(--texto-suave) !important;
+  opacity: 0.8 !important;
+  margin-top: 2px !important;
+}
+
+.metric-card-icono {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: var(--superficie-2) !important;
+}
+
+.metric-card.tono-verde .metric-card-icono {
+  background: rgba(16, 185, 129, 0.12) !important;
+  color: #10b981 !important;
+}
+.metric-card.tono-ambar .metric-card-icono {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #f59e0b !important;
+}
+.metric-card.tono-rojo .metric-card-icono {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #ef4444 !important;
+}
+.metric-card.tono-marino .metric-card-icono,
+.metric-card.tono-oceano .metric-card-icono,
+.metric-card.tono-cielo .metric-card-icono {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #0ea5e9 !important;
+}
+.metric-card.tono-neutral .metric-card-icono {
+  background: var(--superficie-2) !important;
+  color: var(--texto-suave) !important;
+}
+
+/* 2. Barra de filtros minimalista */
+.contenedor-filtros {
+  background: var(--superficie) !important;
+  border: 1px solid var(--borde) !important;
+  border-radius: 14px !important;
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+  box-shadow: none !important;
+}
+
+.filtros-busqueda-fila {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.form-filtros-grid {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-end !important;
+  gap: 12px 14px !important;
+}
+
+.form-filtros-grid .campo {
+  flex: 1 1 150px !important;
+  min-width: 140px !important;
+  max-width: 220px !important;
+  margin: 0 !important;
+}
+
+.form-filtros-grid .campo label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--texto-suave) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 4px !important;
+}
+
+.form-filtros-grid .campo input,
+.form-filtros-grid .campo select {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 4px 12px !important;
+  font-size: 12.5px !important;
+  border-radius: 999px !important;
+  border: 1px solid var(--borde) !important;
+  background: var(--superficie) !important;
+  color: var(--texto) !important;
+}
+
+.filtros-acciones .boton-limpiar {
+  background: transparent !important;
+  border: 1px solid var(--borde) !important;
+  color: var(--texto-suave) !important;
+  border-radius: 999px !important;
+  padding: 5px 12px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+.filtros-acciones .boton-limpiar:hover {
+  background: var(--superficie-2) !important;
+  color: var(--texto) !important;
+}
+
+.filtros-acciones .boton-aplicar-filtros {
+  border-radius: 999px !important;
+  padding: 5px 14px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.filtros-acciones .boton-filtro-exportar {
+  border-radius: 999px !important;
+  padding: 5px 12px !important;
+  min-height: 32px !important;
+  font-size: 12px !important;
+  border: 1px solid var(--borde) !important;
+  background: transparent !important;
+  color: var(--texto-suave) !important;
+}
+
+.filtros-acciones .boton-filtro-exportar:hover {
+  background: var(--superficie-2) !important;
+  color: var(--texto) !important;
+}
+
+.cuenta-filtro-badge {
+  font-size: 11.5px !important;
+  color: var(--texto-suave) !important;
+  background: var(--superficie-2) !important;
+  border: 1px solid var(--borde) !important;
+  border-radius: 999px !important;
+  padding: 4px 10px !important;
+}
+
+/* 3. Tablas minimalistas y limpias */
+.tabla-envoltura {
+  border: 1px solid var(--borde) !important;
+  border-radius: 12px !important;
+  background: var(--superficie) !important;
+  box-shadow: none !important;
+  overflow-x: auto !important;
+}
+
+.tabla-envoltura table thead tr {
+  background: var(--superficie-2) !important;
+  border-bottom: 1px solid var(--borde) !important;
+}
+
+.tabla-envoltura table thead th {
+  padding: 9px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em !important;
+  color: var(--texto-suave) !important;
+}
+
+.tabla-td {
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+}
+
+/* Insignias más sutiles y estilizadas */
+.insignia,
+.badge-status,
+.badge-sla {
+  padding: 2px 8px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 999px !important;
+}
+
+/* 4. Contenedor principal sin bordes pesados */
+.tarjeta {
+  border: 1px solid var(--borde) !important;
+  border-radius: 16px !important;
+  padding: 20px 22px !important;
+  box-shadow: none !important;
+  background: var(--superficie) !important;
+}
+
+/* ---------- Barra de Filtros Intuitiva y Unificada ---------- */
+.contenedor-filtros-moderno {
+  background: var(--superficie) !important;
+  border: 1px solid var(--borde) !important;
+  border-radius: 16px !important;
+  padding: 12px 16px !important;
+  margin-bottom: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.barra-filtros-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.filtro-buscador-flexible {
+  flex: 1 1 260px !important;
+  min-width: 240px !important;
+  max-width: 480px !important;
+}
+
+.filtro-acciones-derecha {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-left: auto !important;
+}
+
+.barra-filtros-selectores {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  padding-top: 8px !important;
+  border-top: 1px solid var(--borde) !important;
+}
+
+.filtro-item-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: var(--superficie-2) !important;
+  border: 1px solid var(--borde) !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  transition: all 0.15s ease !important;
+}
+
+.filtro-item-pill:hover {
+  border-color: var(--borde-fuerte) !important;
+}
+
+.filtro-item-label {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+  color: var(--texto-suave) !important;
+  white-space: nowrap !important;
+}
+
+.filtro-item-control {
+  min-width: 120px !important;
+}
+
+.filtro-item-control > button,
+.filtro-item-control > .relative > button {
+  border: none !important;
+  background: transparent !important;
+  padding: 2px 8px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: var(--texto) !important;
+  box-shadow: none !important;
+}
+
+/* Ocultar barra tosca en menú de filtros */
+.select-menu-flotante {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.select-menu-flotante::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.select-menu-flotante button.select-menu-item {
+  height: auto !important;
+  min-height: 32px !important;
+  padding: 6px 12px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+}
+
+/* ---------- Calendarios Modernos & Color Scheme ---------- */
+:root[data-tema="oscuro"] {
+  color-scheme: dark;
+}
+:root[data-tema="claro"] {
+  color-scheme: light;
+}
+
+:root[data-tema="oscuro"] input[type="date"],
+:root[data-tema="oscuro"] input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+:root[data-tema="claro"] input[type="date"],
+:root[data-tema="claro"] input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.65;
+  filter: invert(0.8);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+:root[data-tema="claro"] input[type="date"]::-webkit-calendar-picker-indicator,
+:root[data-tema="claro"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: none;
+  opacity: 0.55;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.filtro-item-control input[type="date"],
+.filtro-item-control input[type="number"] {
+  border: none !important;
+  background: transparent !important;
+  padding: 2px 6px !important;
+  height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--texto) !important;
+  outline: none !important;
+}
+
+.boton-limpiar-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.boton-limpiar-pill:hover {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #dc2626 !important;
+}
+
+.boton-exportar-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 13px !important;
+  border-radius: 999px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  color: #059669 !important;
+  background: rgba(16, 185, 129, 0.08) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  white-space: nowrap !important;
+}
+
+:root[data-tema="oscuro"] .boton-exportar-pill {
+  color: #34d399 !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.boton-exportar-pill:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: #047857 !important;
+  transform: translateY(-0.5px) !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15) !important;
+}
+
+:root[data-tema="oscuro"] .boton-exportar-pill:hover:not(:disabled) {
+  color: #6ee7b7 !important;
+  background: rgba(16, 185, 129, 0.22) !important;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2) !important;
+}
+
+.boton-exportar-pill:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+}
+
+.boton-exportar-pill.descargado {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  color: #059669 !important;
+}
+
+:root[data-tema="oscuro"] .boton-exportar-pill.descargado {
+  color: #34d399 !important;
+}
+
+.boton-exportar-pill svg,
+.boton-exportar-pill .icono {
+  transition: transform 0.2s ease !important;
+}
+
+.boton-exportar-pill:hover:not(:disabled) svg,
+.boton-exportar-pill:hover:not(:disabled) .icono {
+  transform: translateY(1px);
 }
