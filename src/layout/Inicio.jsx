@@ -12,7 +12,6 @@ import { Icono } from '../ui/Icono.jsx';
 
 const suma = (filas, campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
 const enCurso = (f) => f.estado === 'Programado' || f.estado === 'En proceso';
-
 const TARJETAS_KPI = [
   {
     id: 'abonados-total',
