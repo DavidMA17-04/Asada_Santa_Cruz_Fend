@@ -420,9 +420,14 @@ export default {
       ],
     },
     {
-      titulo: 'Facturas por cobrar',
+      titulo: 'Facturas',
       pestana: 'Facturas',
-      ruta: '/facturas/pendientes',
+      descripcion: 'Cartera por cobrar y estado de cuenta del abonado.',
+      vistas: [
+        {
+          titulo: 'Facturas por cobrar',
+          pestana: 'Por cobrar',
+          ruta: '/facturas/pendientes',
       descripcion: 'Facturas pendientes o vencidas con su saldo. Desde aquí se registran pagos totales o parciales, prórrogas y recargos.',
       mensajeVacio: 'No hay facturas con saldo pendiente.',
       placeholderBusqueda: 'Buscar abonado, factura o identificación…',
@@ -452,11 +457,18 @@ export default {
         { nombre: 'tipo_abonado', etiqueta: 'Tipo de abonado', opciones: TIPO_ABONADO, requerido: true },
         { nombre: 'id_abonado', etiqueta: 'Número de abonado', tipo: 'number', min: 1, requerido: true, ayuda: 'Es el ID interno del abonado, no la cédula.' },
       ],
+        },
+      ],
     },
     {
-      titulo: 'Historial de pagos',
+      titulo: 'Pagos',
       pestana: 'Pagos',
-      ruta: '/pagos',
+      descripcion: 'Historial de pagos y recaudación por método.',
+      vistas: [
+        {
+          titulo: 'Historial de pagos',
+          pestana: 'Historial',
+          ruta: '/pagos',
       descripcion: 'Pagos registrados. Puede filtrar por factura o por rango de fechas y anular un pago con su motivo.',
       mensajeVacio: 'No hay pagos para los filtros indicados.',
       placeholderBusqueda: 'Buscar abonado, factura, método o estado…',
@@ -480,11 +492,25 @@ export default {
         campos: [{ nombre: 'motivo', etiqueta: 'Motivo de la anulación', tipo: 'textarea', requerido: true, max: 250 }],
         exito: () => 'Pago anulado. El saldo de la factura se recalculó.',
       }],
+        },
+        {
+          titulo: 'Recaudación por método de pago',
+          pestana: 'Por método',
+          ruta: '/pagos/por-metodo',
+          ocultar: ['id_metodo_pago'],
+          grafico: { etiqueta: 'nombre_metodo', series: [{ campo: 'total_recaudado', nombre: 'Recaudado' }], formato: moneda },
+        },
+      ],
     },
     {
-      titulo: 'Reporte de morosidad',
+      titulo: 'Morosidad',
       pestana: 'Morosidad',
-      ruta: '/mora/reporte',
+      descripcion: 'Reporte de morosos, recargos y configuración de la mora.',
+      vistas: [
+        {
+          titulo: 'Reporte de morosidad',
+          pestana: 'Morosos',
+          ruta: '/mora/reporte',
       descripcion: 'Abonados con facturas vencidas, agrupados por conexión. Desde aquí puede suspender las conexiones morosas o reactivar las que ya pagaron.',
       mensajeVacio: 'No hay conexiones morosas con los filtros indicados.',
       placeholderBusqueda: 'Buscar abonado, identificación o conexión…',
@@ -605,13 +631,8 @@ export default {
         inicial: (f) => ({ valor: f.valor }),
         exito: () => 'Parámetro actualizado.',
       }],
-    },
-    {
-      titulo: 'Recaudación por método de pago',
-      pestana: 'Por método',
-      ruta: '/pagos/por-metodo',
-      ocultar: ['id_metodo_pago'],
-      grafico: { etiqueta: 'nombre_metodo', series: [{ campo: 'total_recaudado', nombre: 'Recaudado' }], formato: moneda },
+        },
+      ],
     },
   ],
 };

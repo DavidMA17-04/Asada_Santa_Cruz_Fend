@@ -1339,6 +1339,66 @@ a {
   color: #ffffff;
 }
 
+/* ---------- Pestañas internas de una etapa ---------- */
+.seccion-con-vistas {
+  display: flex;
+  flex-direction: column;
+}
+
+.vistas-pestanas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.vista-pestana {
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  color: var(--texto-suave);
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.vista-pestana:hover {
+  color: var(--texto);
+  border-color: var(--acento);
+}
+
+.vista-pestana.activa {
+  background: linear-gradient(135deg, var(--primario) 0%, var(--acento) 100%);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+/* Bloques de gráficos y conjuntos dentro de una sección */
+.graficos-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.conjuntos-pestanas {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 640px) {
+  .vistas-pestanas {
+    gap: 6px;
+  }
+
+  .vista-pestana {
+    padding: 6px 12px;
+    font-size: 12.3px;
+  }
+}
+
 /* ---------- Lienzos de Gráficos ---------- */
 .lienzo-grafico-vacio {
   display: flex;
@@ -2053,12 +2113,35 @@ a {
 /* ---------- Formularios Generales ---------- */
 .form-rejilla {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px 16px;
+  align-items: start;
 }
 
 .form-rejilla .ancho-completo {
   grid-column: 1 / -1;
+}
+
+/* En modales hay menos ancho: dos columnas y una en los diálogos chicos. */
+dialog.modal .form-rejilla {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+dialog.modal.chico .form-rejilla {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1100px) {
+  .form-rejilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .form-rejilla,
+  dialog.modal .form-rejilla {
+    grid-template-columns: 1fr;
+  }
 }
 
 .campo label {
@@ -2164,6 +2247,31 @@ a {
   align-items: center;
   gap: 8px;
   padding-top: 22px;
+}
+
+/* En los formularios, el check ocupa su propia fila y se ve como un bloque. */
+.form-rejilla .campo-check {
+  grid-column: 1 / -1;
+  gap: 10px;
+  padding: 10px 12px;
+  min-height: 42px;
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  background: var(--superficie-2);
+}
+
+.form-rejilla .campo-check label {
+  margin: 0;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.form-rejilla .campo-check input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  flex: none;
+  cursor: pointer;
 }
 
 .campo-check input {
@@ -3112,6 +3220,227 @@ th.th-acciones,
   background: linear-gradient(90deg, #0284c7, #38b2e3);
 }
 
+/* ---------- Gráfico de columnas (tema claro/oscuro) ---------- */
+.grafico-columnas-card {
+  position: relative;
+  padding: 34px 16px 12px;
+  border-radius: 16px;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+}
+
+.grafico-cuadricula {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: 42px;
+  bottom: 50px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.grafico-cuadricula span {
+  border-bottom: 1px dashed var(--borde-suave);
+}
+
+.grafico-columnas-area {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  height: 180px;
+}
+
+.grafico-columna {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+  outline: none;
+}
+
+.grafico-columna-valor {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--texto-suave);
+  margin-bottom: 8px;
+  white-space: nowrap;
+  transition: color 0.15s;
+}
+
+.grafico-columna-valor.activa {
+  color: var(--acento);
+}
+
+.grafico-columna-pista {
+  width: 100%;
+  flex: 1;
+  max-height: 135px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.grafico-columna-barra {
+  width: 100%;
+  max-width: 42px;
+  border-radius: 8px 8px 0 0;
+  transition: filter 0.2s;
+}
+
+.grafico-columna-barra.activa {
+  filter: brightness(1.15);
+}
+
+.grafico-tooltip {
+  position: absolute;
+  top: -44px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--primario);
+  color: #ffffff;
+  box-shadow: var(--sombra-alta);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.grafico-tooltip span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.82;
+}
+
+.grafico-tooltip strong {
+  font-size: 12.5px;
+}
+
+.grafico-eje {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--borde);
+}
+
+.grafico-eje-item {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.grafico-eje-label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--texto-suave);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grafico-eje-label.activa {
+  color: var(--acento);
+  font-weight: 600;
+}
+
+/* ---------- Gráfico de barras horizontales (tema claro/oscuro) ---------- */
+.grafico-moderno {
+  padding: 18px;
+  border-radius: 16px;
+  background: var(--superficie);
+}
+
+.grafico-moderno .grafico-leyenda {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.grafico-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.grafico-grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.grafico-etiqueta {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--texto);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.grafico-linea {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.grafico-linea .grafico-pista {
+  height: 12px;
+  background: var(--superficie-2);
+}
+
+.grafico-linea strong {
+  min-width: 84px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--texto);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.grafico-linea.activa .grafico-pista {
+  box-shadow: 0 0 0 2px var(--primario-suave);
+}
+
+@media (max-width: 640px) {
+  .grafico-columnas-area {
+    gap: 6px;
+    height: 160px;
+  }
+
+  .grafico-columna-valor {
+    font-size: 9.5px;
+  }
+
+  .grafico-eje {
+    gap: 6px;
+  }
+
+  .grafico-eje-label {
+    font-size: 10.5px;
+  }
+
+  .grafico-moderno {
+    padding: 14px;
+  }
+}
+
 /* ---------- Modal ---------- */
 dialog.modal {
   position: fixed !important;
@@ -3272,6 +3601,27 @@ pre.script {
   font-weight: 600;
   color: var(--texto);
   line-height: 1.35;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
+/* En formularios de página, la referencia se ve como un campo más (una línea). */
+.form-rejilla .campo-info {
+  height: 38px;
+  padding: 8px 11px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* En modales se permite que el texto largo haga varias líneas. */
+dialog.modal .campo-info {
+  height: auto;
+  white-space: normal;
+  overflow: visible;
 }
 
 .aviso-dias {

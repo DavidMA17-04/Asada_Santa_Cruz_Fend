@@ -145,17 +145,12 @@ export function GraficoColumnas({
 
   return (
     <div className="lienzo-columnas w-full">
-      <div className="relative pt-9 pb-3 px-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 overflow-visible shadow-xs">
-        {/* Líneas horizontales de cuadrícula (Grid) sutiles */}
-        <div className="absolute inset-x-4 top-10 bottom-12 flex flex-col justify-between pointer-events-none opacity-20">
-          <div className="border-b border-dashed border-slate-600 w-full" />
-          <div className="border-b border-dashed border-slate-600 w-full" />
-          <div className="border-b border-dashed border-slate-600 w-full" />
-          <div className="border-b border-dashed border-slate-600 w-full" />
+      <div className="grafico-columnas-card">
+        <div className="grafico-cuadricula" aria-hidden="true">
+          <span /><span /><span /><span />
         </div>
 
-        {/* Área de columnas */}
-        <div className="relative z-10 flex items-end justify-between gap-3 h-[180px]">
+        <div className="grafico-columnas-area">
           {datos.map((d, i) => {
             const altura = d.valor > 0 ? Math.max(6, Math.round((d.valor / max) * 100)) : 4;
             const completo = esMoneda ? moneda(d.valor) : formato(d.valor);
@@ -165,32 +160,29 @@ export function GraficoColumnas({
             return (
               <div
                 key={`${d.nombre}-${i}`}
-                className="relative flex-1 flex flex-col items-center justify-end h-full min-w-0 group cursor-pointer"
+                className="grafico-columna"
                 onMouseEnter={() => setHoverIndex(i)}
                 onMouseLeave={() => setHoverIndex(null)}
+                onFocus={() => setHoverIndex(i)}
+                onBlur={() => setHoverIndex(null)}
+                tabIndex={0}
+                title={`${d.nombre}: ${completo}`}
               >
-                {/* Tooltip moderno flotante animado */}
                 {estaActivo ? (
-                  <div className="absolute -top-12 z-30 px-3 py-1.5 rounded-xl bg-slate-950/95 border border-slate-700/80 shadow-2xl text-xs whitespace-nowrap flex flex-col items-center pointer-events-none transform -translate-x-1/2 left-1/2 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-md">
-                    <span className="text-[10px] uppercase font-semibold tracking-wider text-slate-400">{d.nombre}</span>
-                    <strong className="text-sky-400 font-bold tracking-tight mt-0.5">{completo}</strong>
-                    <div className="w-2 h-2 bg-slate-950 border-r border-b border-slate-700/80 transform rotate-45 -mb-1 mt-0.5" />
+                  <div className="grafico-tooltip">
+                    <span>{d.nombre}</span>
+                    <strong>{completo}</strong>
                   </div>
                 ) : null}
 
-                {/* Etiquetas de valores con peso semibold formateados */}
-                <span className={`text-[11px] font-semibold tracking-tight mb-2 whitespace-nowrap transition-colors duration-150 ${estaActivo ? 'text-sky-400 scale-105' : 'text-slate-300'}`}>
+                <span className={`grafico-columna-valor${estaActivo ? ' activa' : ''}`}>
                   {abreviado}
                 </span>
 
-                {/* Barras estilizadas con esquinas redondeadas y gradientes */}
-                <div className="w-full flex justify-center items-end flex-1 max-h-[135px]">
+                <div className="grafico-columna-pista">
                   <div
-                    className={`w-full max-w-[42px] rounded-t-lg transition-all duration-300 ease-out shadow-xs ${estaActivo ? 'brightness-125 shadow-md shadow-sky-500/25 scale-x-105' : 'hover:brightness-110'}`}
-                    style={{
-                      height: `${altura}%`,
-                      background: color,
-                    }}
+                    className={`grafico-columna-barra${estaActivo ? ' activa' : ''}`}
+                    style={{ height: `${altura}%`, background: color }}
                   />
                 </div>
               </div>
@@ -198,12 +190,11 @@ export function GraficoColumnas({
           })}
         </div>
 
-        {/* Eje X y etiquetas legibles */}
-        <div className="border-t border-slate-700/60 mt-0 pt-2 flex items-center justify-between gap-3">
+        <div className="grafico-eje">
           {datos.map((d, i) => (
-            <div key={`lbl-${i}`} className="flex-1 text-center min-w-0">
+            <div key={`lbl-${i}`} className="grafico-eje-item">
               <span
-                className={`text-xs font-medium truncate block transition-colors duration-150 ${hoverIndex === i ? 'text-sky-400 font-semibold' : 'text-slate-400'}`}
+                className={`grafico-eje-label${hoverIndex === i ? ' activa' : ''}`}
                 title={d.nombre}
               >
                 {d.nombre}
@@ -213,7 +204,7 @@ export function GraficoColumnas({
         </div>
       </div>
 
-      {pie ? <small className="block text-center mt-2.5 text-xs text-slate-500 font-medium tracking-wide">{pie}</small> : null}
+      {pie ? <small className="pie-eje">{pie}</small> : null}
     </div>
   );
 }
@@ -236,53 +227,44 @@ export function GraficoBarras({ filas, etiqueta, series, formato = numero }) {
   const maximo = Math.max(1, ...filas.flatMap((f) => series.map((s) => Number(f[s.campo]) || 0)));
 
   return (
-    <div className="space-y-4 p-4 rounded-2xl bg-slate-900/40 border border-slate-800/80 shadow-xs">
+    <div className="grafico grafico-moderno">
       {series.length > 1 ? (
-        <div className="flex items-center gap-4 text-xs font-medium text-slate-400 pb-2 border-b border-slate-800">
-          {series.map((s) => (
-            <span key={s.nombre} className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-sky-400 to-[#1A5B8C]" />
-              {s.nombre}
-            </span>
+        <div className="grafico-leyenda">
+          {series.map((s, i) => (
+            <span key={s.nombre}><i className={`serie-${i}`} />{s.nombre}</span>
           ))}
         </div>
       ) : null}
 
-      <div className="space-y-3.5">
+      <div className="grafico-lista">
         {filas.map((f, idx) => (
-          <div key={idx} className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="font-medium text-slate-300" title={textoEtiqueta(f)}>
-                {textoEtiqueta(f)}
-              </span>
-            </div>
+          <div className="grafico-grupo" key={idx}>
+            <span className="grafico-etiqueta" title={textoEtiqueta(f)}>
+              {textoEtiqueta(f)}
+            </span>
 
-            <div className="space-y-2">
-              {series.map((s) => {
-                const valor = Number(f[s.campo]) || 0;
-                const pct = Math.max(2, (valor / maximo) * 100);
-                const activo = hoverBar === `${idx}-${s.campo}`;
+            {series.map((s, i) => {
+              const valor = Number(f[s.campo]) || 0;
+              const pct = Math.max(2, (valor / maximo) * 100);
+              const activo = hoverBar === `${idx}-${s.campo}`;
 
-                return (
-                  <div
-                    key={s.campo}
-                    className="relative flex items-center gap-3 cursor-pointer group"
-                    onMouseEnter={() => setHoverBar(`${idx}-${s.campo}`)}
-                    onMouseLeave={() => setHoverBar(null)}
-                  >
-                    <div className="flex-1 h-3.5 rounded-full bg-slate-800/80 overflow-hidden relative border border-slate-700/40">
-                      <div
-                        className={`h-full rounded-r-lg transition-all duration-300 ease-out bg-gradient-to-r from-[#1A5B8C] to-[#38B6FF] ${activo ? 'brightness-125' : ''}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <strong className="text-xs font-semibold text-slate-200 min-w-[70px] text-right font-mono">
-                      {formato(valor)}
-                    </strong>
-                  </div>
-                );
-              })}
-            </div>
+              return (
+                <div
+                  key={s.campo}
+                  className={`grafico-linea${activo ? ' activa' : ''}`}
+                  onMouseEnter={() => setHoverBar(`${idx}-${s.campo}`)}
+                  onMouseLeave={() => setHoverBar(null)}
+                >
+                  <span className="grafico-pista">
+                    <span
+                      className={`grafico-relleno serie-${i}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </span>
+                  <strong>{formato(valor)}</strong>
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>

@@ -249,18 +249,6 @@ export default {
       permisos: VER_MEDIDORES,
       ruta: '/medidores',
       descripcion: 'Medidores instalados y su última lectura.',
-      graficoPastel: {
-        campo: 'estado',
-        estados: ESTADOS.medidor,
-        titulo: 'Medidores por estado',
-        totalEtiqueta: 'Medidores',
-        colores: {
-          Activo: '#2e7d47',
-          Dañado: '#d97706',
-          Sustituido: '#64748b',
-          Retirado: '#1b76a6',
-        },
-      },
       filtros: [
         { nombre: 'numero_serie', etiqueta: 'Número de serie' },
         { nombre: 'id_conexion', etiqueta: 'Conexión', tipo: 'number', min: 1 },

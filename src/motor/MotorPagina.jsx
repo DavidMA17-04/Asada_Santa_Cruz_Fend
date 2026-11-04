@@ -14,6 +14,9 @@ import {
   MetricCard,
   MetricsSummary,
   UnifiedFilterBar,
+  PestanasSeccion,
+  GraficoBarras,
+  GraficoDonut,
 } from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
 
@@ -314,6 +317,7 @@ function ContenidoConsulta({
   exportarRef,
 }) {
   const acciones = permitidos(def.acciones);
+  const [conjuntoActivo, setConjuntoActivo] = useState(0);
   const opciones = {
     acciones,
     alAccion: (a, fila) => ejecutarAccion(a, fila, recargar),
@@ -327,6 +331,11 @@ function ContenidoConsulta({
     ocultarHerramientas: Boolean(exportarRef || alCambiarBusqueda),
   };
   const botones = permitidos(def.botones || []);
+
+  // Conjuntos: se muestran en pestañas para no apilar tablas y evitar scroll eterno.
+  const totalConjuntos = r?.conjuntos?.length || 0;
+  const indiceConjunto = Math.min(Math.max(conjuntoActivo, 0), Math.max(0, totalConjuntos - 1));
+  const filasConjunto = r?.conjuntos?.[indiceConjunto] || [];
 
   if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
     return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
@@ -351,14 +360,34 @@ function ContenidoConsulta({
         </div>
       ) : null}
       {def.conjuntos && r.conjuntos ? (
-        r.conjuntos.map((filas, i) => (
-          <div className="bloque-conjunto" key={i}>
-            <h3>{def.conjuntos[i] || `Resultado ${i + 1}`}</h3>
-            <BloqueTabla filas={filas} />
-          </div>
-        ))
+        <div className="conjuntos-pestanas">
+          <PestanasSeccion
+            vistas={def.conjuntos.map((titulo) => ({ pestana: titulo }))}
+            activa={indiceConjunto}
+            alCambiar={setConjuntoActivo}
+          />
+          <BloqueTabla filas={filasConjunto} />
+        </div>
       ) : (
-        <Tabla filas={r.datos || []} {...opciones} />
+        <>
+          {(def.grafico || def.graficoPastel) && r.datos?.length ? (
+            <div className="graficos-seccion">
+              {def.graficoPastel ? (
+                <div className="tarjeta-mini-grafico">
+                  <div className="tarjeta-mini-cabecera">
+                    <strong>{def.graficoPastel.titulo}</strong>
+                  </div>
+                  <GraficoDonut
+                    segmentos={segmentosPastel(r.datos, def.graficoPastel)}
+                    totalEtiqueta={def.graficoPastel.totalEtiqueta || 'Total'}
+                  />
+                </div>
+              ) : null}
+              {def.grafico ? <GraficoBarras filas={r.datos} {...def.grafico} /> : null}
+            </div>
+          ) : null}
+          <Tabla filas={r.datos || []} {...opciones} />
+        </>
       )}
     </div>
   );
@@ -676,12 +705,17 @@ const TIPOS = {
 
 export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
   if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
-  return (pagina.secciones || []).filter((s) => puede(s.permisos ?? pagina.permisos ?? []));
+  return (pagina.secciones || []).filter((s) => {
+    const permisos = s.permisos ?? pagina.permisos ?? [];
+    // Una etapa con vistas internas se muestra si el rol puede ver al menos una.
+    if (s.vistas?.length) return s.vistas.some((v) => puede(v.permisos ?? permisos));
+    return puede(permisos);
+  });
 }
 
 export function MotorPagina({ pagina }) {
   const secciones = seccionesVisibles(pagina);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   if (!secciones.length) {
     return <div className="tarjeta">Su rol no tiene acceso a ninguna sección de este módulo.</div>;
@@ -690,7 +724,30 @@ export function MotorPagina({ pagina }) {
   const paramSec = Number(searchParams.get('sec'));
   const indice = Number.isInteger(paramSec) && paramSec >= 0 && paramSec < secciones.length ? paramSec : 0;
   const sec = secciones[indice];
-  const Tipo = TIPOS[sec.tipo || 'consulta'];
 
+  // Etapa con pestañas internas (Facturas, Pagos, Morosidad, etc.)
+  const vistas = sec.vistas?.length
+    ? sec.vistas.filter((v) => sesion.puede(v.permisos ?? sec.permisos ?? pagina.permisos ?? []))
+    : null;
+
+  if (vistas?.length) {
+    const paramV = Number(searchParams.get('v'));
+    const vistaIndice = Number.isInteger(paramV) && paramV >= 0 && paramV < vistas.length ? paramV : 0;
+    const vista = vistas[vistaIndice];
+    const Tipo = TIPOS[vista.tipo || 'consulta'];
+
+    return (
+      <div className="seccion-con-vistas">
+        <PestanasSeccion
+          vistas={vistas}
+          activa={vistaIndice}
+          alCambiar={(i) => setSearchParams({ sec: String(indice), v: String(i) })}
+        />
+        <Tipo key={`${pagina.id}-${indice}-${vistaIndice}`} sec={vista} pagina={pagina} />
+      </div>
+    );
+  }
+
+  const Tipo = TIPOS[sec.tipo || 'consulta'];
   return <Tipo key={`${pagina.id}-${indice}`} sec={sec} pagina={pagina} />;
 }

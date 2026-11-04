@@ -133,7 +133,12 @@ function Control({
 
   if (campo.tipo === 'info') {
     return (
-      <div className="campo-info" id={id} role="status">
+      <div
+        className="campo-info"
+        id={id}
+        role="status"
+        title={typeof value === 'string' ? value : undefined}
+      >
         {value}
       </div>
     );

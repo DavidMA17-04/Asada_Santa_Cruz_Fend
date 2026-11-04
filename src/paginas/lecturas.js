@@ -76,7 +76,7 @@ export function camposRegistroLectura(opts = {}) {
       nombre: '_info_ref_lectura',
       etiqueta: 'Referencia de lectura',
       desdeCampo: 'id_medidor',
-      textoVacio: 'Seleccione un medidor para ver la lectura anterior o inicial.',
+      textoVacio: 'Seleccione un medidor',
       textoDesdeFila: textoReferenciaLectura,
       etiquetaDesdeFila: (fila) => referenciaLectura(fila)?.etiqueta || 'Referencia de lectura',
     }];

@@ -144,7 +144,7 @@ const VISTAS_GRAFICO = [
     subtitulo: 'Ingresos recaudados según método de pago.',
     permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS],
     cargar: () => obtener('/pagos/por-metodo', { desde: fechas.haceDias(90), hasta: fechas.hoy() }),
-    etiquetaFila: 'metodo_pago',
+    etiquetaFila: 'nombre_metodo',
     campo: 'total_recaudado',
     formato: moneda,
     pie: 'Método de pago',

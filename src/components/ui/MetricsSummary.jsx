@@ -106,7 +106,7 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
   if (!tarjetas.length) return null;
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5 ${className}`}>
+    <div className={`metricas-resumen-grid ${className}`}>
       {tarjetas.map((t, idx) => (
         <MetricCard
           key={`${t.titulo}-${idx}`}
