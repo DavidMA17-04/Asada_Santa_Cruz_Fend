@@ -112,11 +112,13 @@ const abreviar = (valor) => {
   return String(Math.round(n));
 };
 
-/** Gráfico de columnas verticales moderno con gradientes de la ASADA, cuadrícula sutil y tooltips interactivos. */
+/** Gráfico de columnas verticales moderno con gradientes de la ASADA, cuadrícula sutil y tooltips interactivos.
+    Acepta `campo` (una serie) o `series` (varias barras agrupadas por categoría). */
 export function GraficoColumnas({
   filas = [],
   etiqueta,
   campo,
+  series,
   formato = numero,
   color = 'linear-gradient(180deg, #38B6FF 0%, #1A5B8C 100%)',
   mensajeVacio = 'No hay registros para este periodo.',
@@ -125,12 +127,16 @@ export function GraficoColumnas({
 }) {
   const [hoverIndex, setHoverIndex] = useState(null);
 
+  const seriesFinal = series?.length ? series : [{ campo, nombre: '' }];
+  const multiple = seriesFinal.length > 1;
+
   const datos = filas.slice(0, maximo).map((f) => ({
     nombre: typeof etiqueta === 'function' ? etiqueta(f) : String(f[etiqueta] ?? '—'),
-    valor: Number(f[campo]) || 0,
+    etiquetaLarga: f.etiquetaLarga,
+    valores: seriesFinal.map((s) => Number(f[s.campo]) || 0),
   }));
-  const max = Math.max(0, ...datos.map((d) => d.valor));
-  const esMoneda = formato === moneda || /monto|saldo|recaudado|ingreso|total/i.test(campo);
+  const max = Math.max(0, ...datos.flatMap((d) => d.valores));
+  const esMoneda = formato === moneda || /monto|saldo|recaudado|ingreso|total/i.test(campo || '');
 
   if (!datos.length || max === 0) {
     return (
@@ -145,6 +151,14 @@ export function GraficoColumnas({
 
   return (
     <div className="lienzo-columnas w-full">
+      {multiple ? (
+        <div className="grafico-leyenda grafico-leyenda-columnas">
+          {seriesFinal.map((s, i) => (
+            <span key={s.nombre || i}><i className={`serie-${i}`} />{s.nombre}</span>
+          ))}
+        </div>
+      ) : null}
+
       <div className="grafico-columnas-card">
         <div className="grafico-cuadricula" aria-hidden="true">
           <span /><span /><span /><span />
@@ -152,10 +166,13 @@ export function GraficoColumnas({
 
         <div className="grafico-columnas-area">
           {datos.map((d, i) => {
-            const altura = d.valor > 0 ? Math.max(6, Math.round((d.valor / max) * 100)) : 4;
-            const completo = esMoneda ? moneda(d.valor) : formato(d.valor);
-            const abreviado = completo.length > 8 ? `${esMoneda ? '₡' : ''}${abreviar(d.valor)}` : completo;
             const estaActivo = hoverIndex === i;
+            const completo = d.valores
+              .map((v, si) => `${seriesFinal[si].nombre ? `${seriesFinal[si].nombre}: ` : ''}${formato(v)}`)
+              .join(' · ');
+            const valorUnico = d.valores[0] || 0;
+            const textoUnico = esMoneda ? moneda(valorUnico) : formato(valorUnico);
+            const abreviado = textoUnico.length > 8 ? `${esMoneda ? '₡' : ''}${abreviar(valorUnico)}` : textoUnico;
 
             return (
               <div
@@ -166,24 +183,42 @@ export function GraficoColumnas({
                 onFocus={() => setHoverIndex(i)}
                 onBlur={() => setHoverIndex(null)}
                 tabIndex={0}
-                title={`${d.nombre}: ${completo}`}
+                title={`${d.etiquetaLarga || d.nombre}: ${completo}`}
               >
                 {estaActivo ? (
                   <div className="grafico-tooltip">
-                    <span>{d.nombre}</span>
-                    <strong>{completo}</strong>
+                    <span>{d.etiquetaLarga || d.nombre}</span>
+                    {d.valores.map((v, si) => (
+                      <strong key={si}>
+                        {seriesFinal[si].nombre ? `${seriesFinal[si].nombre}: ` : ''}
+                        {formato(v)}
+                      </strong>
+                    ))}
                   </div>
                 ) : null}
 
-                <span className={`grafico-columna-valor${estaActivo ? ' activa' : ''}`}>
-                  {abreviado}
-                </span>
+                {!multiple ? (
+                  <span className={`grafico-columna-valor${estaActivo ? ' activa' : ''}`}>
+                    {abreviado}
+                  </span>
+                ) : null}
 
                 <div className="grafico-columna-pista">
-                  <div
-                    className={`grafico-columna-barra${estaActivo ? ' activa' : ''}`}
-                    style={{ height: `${altura}%`, background: color }}
-                  />
+                  <div className={`grafico-barras-grupo${multiple ? ' multiple' : ''}`}>
+                    {d.valores.map((v, si) => {
+                      const altura = v > 0 ? Math.max(6, Math.round((v / max) * 100)) : 0;
+                      return (
+                        <div
+                          key={si}
+                          className={`grafico-columna-barra${multiple ? ` serie-${si}` : ''}${estaActivo ? ' activa' : ''}`}
+                          style={{
+                            height: `${altura}%`,
+                            background: multiple ? undefined : color,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
@@ -195,7 +230,7 @@ export function GraficoColumnas({
             <div key={`lbl-${i}`} className="grafico-eje-item">
               <span
                 className={`grafico-eje-label${hoverIndex === i ? ' activa' : ''}`}
-                title={d.nombre}
+                title={d.etiquetaLarga || d.nombre}
               >
                 {d.nombre}
               </span>

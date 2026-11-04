@@ -1,7 +1,7 @@
 // R3 · Control de pagos y morosidad (CU-4.x).
 import { P } from '../permisos.js';
 import { moneda, numero } from '../ui/formato.js';
-import { C, TIPO_ABONADO, fechas } from './comunes.js';
+import { C, fechas } from './comunes.js';
 
 const CONSULTAR = [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS];
 const GESTIONAR = [P.GESTIONAR_PAGOS];
@@ -450,13 +450,27 @@ export default {
       titulo: 'Estado de cuenta del abonado',
       pestana: 'Estado de cuenta',
       ruta: '/estado-cuenta',
-      descripcion: 'Escriba el tipo y el número de abonado, y presione Buscar. Verá el resumen de deuda, sus facturas, pagos y recargos en una sola pantalla.',
+      descripcion: 'Deuda, facturas, pagos y recargos de un abonado en una sola pantalla.',
       cargarAlInicio: false,
+      textoFiltros: 'Consultar estado de cuenta',
+      mensajeInicial: 'Elija un abonado por nombre o cédula para consultar su estado de cuenta.',
       conjuntos: ['Resumen', 'Facturas', 'Pagos', 'Recargos'],
-      filtros: [
-        { nombre: 'tipo_abonado', etiqueta: 'Tipo de abonado', opciones: TIPO_ABONADO, requerido: true },
-        { nombre: 'id_abonado', etiqueta: 'Número de abonado', tipo: 'number', min: 1, requerido: true, ayuda: 'Es el ID interno del abonado, no la cédula.' },
-      ],
+      filtros: [{
+        nombre: 'abonado_ref',
+        etiqueta: 'Abonado',
+        ancho: true,
+        requerido: true,
+        catalogo: {
+          ruta: '/abonados/todos',
+          valor: (f) => `${f.tipo_abonado}|${f.id_abonado}`,
+          texto: (f) => `${f.identificacion} · ${f.nombre_completo}`,
+          filtro: (f) => f.activo !== false,
+        },
+      }],
+      prepararFiltros: ({ abonado_ref, ...resto }) => {
+        const [tipo_abonado, id_abonado] = String(abonado_ref || '').split('|');
+        return { ...resto, tipo_abonado, id_abonado };
+      },
         },
       ],
     },
@@ -498,20 +512,19 @@ export default {
           pestana: 'Por método',
           ruta: '/pagos/por-metodo',
           ocultar: ['id_metodo_pago'],
-          grafico: { etiqueta: 'nombre_metodo', series: [{ campo: 'total_recaudado', nombre: 'Recaudado' }], formato: moneda },
         },
       ],
     },
     {
       titulo: 'Morosidad',
       pestana: 'Morosidad',
-      descripcion: 'Reporte de morosos, recargos y configuración de la mora.',
+      descripcion: '1) Revise las conexiones con saldo vencido. 2) Ajuste los límites en Parámetros. 3) Use Simulación para ver el impacto antes de suspender o reactivar.',
       vistas: [
         {
           titulo: 'Reporte de morosidad',
           pestana: 'Morosos',
           ruta: '/mora/reporte',
-      descripcion: 'Abonados con facturas vencidas, agrupados por conexión. Desde aquí puede suspender las conexiones morosas o reactivar las que ya pagaron.',
+      descripcion: 'Conexiones con facturas vencidas. Revise el detalle y use la pestaña Simulación para ver cuántas se suspenderían.',
       mensajeVacio: 'No hay conexiones morosas con los filtros indicados.',
       placeholderBusqueda: 'Buscar abonado, identificación o conexión…',
       transformar: enriquecerReporteMora,
@@ -520,15 +533,6 @@ export default {
       ocultar: ['tipo_abonado', 'nombre_completo', 'cantidad_facturas_vencidas', 'dias_atraso_maximo'],
       filtros: [{ nombre: 'dias_minimos_atraso', etiqueta: 'Días mínimos de atraso', tipo: 'number', min: 0 }],
       botones: [
-        {
-          texto: 'Simular suspensión',
-          icono: 'ojo',
-          ruta: '/mora/suspender',
-          cuerpo: () => ({ solo_simular: true }),
-          mostrarResultado: true,
-          titulosResultado: ['Resumen', 'Conexiones que se suspenderían'],
-          exito: (r) => `${r.salida?.suspendidas ?? 0} conexiones se suspenderían.`,
-        },
         {
           texto: 'Suspender morosas',
           permisos: GESTIONAR,
@@ -552,11 +556,19 @@ export default {
         },
       ],
     },
+        {
+          titulo: 'Simulación de suspensión',
+          pestana: 'Simulación',
+          tipo: 'simulacion',
+          ruta: '/mora/suspender',
+          permisos: CONSULTAR,
+          descripcion: 'Ajuste los días de atraso y el saldo mínimo para ver qué conexiones se suspenderían antes de aplicar el cambio.',
+        },
     {
       titulo: 'Recargos por mora',
       pestana: 'Recargos',
       ruta: '/mora/recargos',
-      descripcion: 'Recargos aplicados sobre facturas que aún no se han pagado. Al anular uno, el proceso automático no lo vuelve a aplicar.',
+      descripcion: 'Se calculan con los tramos configurados y se aplican a facturas vencidas. Al anular uno, el proceso automático no lo vuelve a aplicar.',
       mensajeVacio: 'No hay recargos vigentes por mora.',
       placeholderBusqueda: 'Buscar abonado, factura o monto…',
       transformar: enriquecerRecargos,
