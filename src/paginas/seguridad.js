@@ -310,9 +310,14 @@ export default {
       ],
     },
     {
-      titulo: 'Roles',
-      permisos: GESTIONAR,
-      ruta: '/seguridad/roles',
+      titulo: 'Roles y permisos',
+      pestana: 'Roles y permisos',
+      descripcion: 'Roles, matriz de permisos y catálogo de módulos.',
+      vistas: [
+        {
+          titulo: 'Roles',
+          permisos: GESTIONAR,
+          ruta: '/seguridad/roles',
       descripcion: 'Los permisos se asignan al rol. Un cambio aplica de inmediato a todos los usuarios del rol. Los roles base no se eliminan ni se renombran.',
       botones: [{
         texto: 'Nuevo rol', primario: true, ruta: '/seguridad/roles',
@@ -394,11 +399,19 @@ export default {
           exito: () => 'Módulo actualizado.',
         },
       ],
+        },
+      ],
     },
     {
-      titulo: 'Bitácora',
-      permisos: BITACORA,
-      ruta: '/seguridad/bitacora',
+      titulo: 'Auditoría',
+      pestana: 'Auditoría',
+      descripcion: 'Bitácora de cambios y actividad por usuario.',
+      vistas: [
+        {
+          titulo: 'Bitácora',
+          pestana: 'Bitácora',
+          permisos: BITACORA,
+          ruta: '/seguridad/bitacora',
       descripcion: 'Registro de inicios de sesión y de cada cambio hecho en la base, a nombre del usuario que lo hizo. Es de solo lectura.',
       mensajeVacio: 'No hay registros que cumplan los filtros.',
       placeholderBusqueda: 'Buscar usuario, acción, tabla o descripción…',
@@ -430,6 +443,8 @@ export default {
       filtros: [
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date', requerido: true, valor: fechas.inicioMes },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date', requerido: true, valor: fechas.hoy },
+      ],
+        },
       ],
     },
   ],

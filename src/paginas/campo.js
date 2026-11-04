@@ -72,8 +72,13 @@ export default {
       ],
     },
     {
-      titulo: 'Ruta de lectura del mes',
-      pestana: 'Ruta de lectura',
+      titulo: 'Lecturas',
+      pestana: 'Lecturas',
+      descripcion: 'Ruta del mes y registro de lecturas.',
+      vistas: [
+        {
+          titulo: 'Ruta de lectura del mes',
+          pestana: 'Ruta de lectura',
       permisos: [P.REGISTRAR_LECTURA],
       ruta: '/medidores/sin-lectura',
       descripcion: 'Medidores pendientes del mes, ordenados por zona y serie. Al leer verá la lectura anterior; el consumo se calcula solo.',
@@ -99,8 +104,15 @@ export default {
       permisos: [P.REGISTRAR_LECTURA],
       descripcion: 'Elija el medidor: verá la lectura anterior o inicial antes de guardar.',
     }),
+      ],
+    },
     {
-      titulo: 'Reportar una incidencia',
+      titulo: 'Incidencias',
+      pestana: 'Incidencias',
+      descripcion: 'Reporte de problemas y lista de incidencias abiertas.',
+      vistas: [
+        {
+          titulo: 'Reportar una incidencia',
       pestana: 'Reportar incidencia',
       tipo: 'formulario',
       permisos: [P.REGISTRAR_INCIDENCIA],
@@ -112,9 +124,12 @@ export default {
     },
     {
       titulo: 'Incidencias abiertas',
+      pestana: 'Abiertas',
       permisos: [P.CONSULTAR_MANTENIMIENTO],
       ruta: '/incidencias/abiertas',
       descripcion: 'Problemas reportados que todavía no se han resuelto.',
+    },
+      ],
     },
     {
       titulo: 'Registrar trabajo ya realizado',

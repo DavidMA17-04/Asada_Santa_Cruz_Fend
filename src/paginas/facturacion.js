@@ -73,14 +73,19 @@ export default {
       columnas: COLUMNAS_RUTA_LECTURA,
       acciones: [accionRegistrarLectura({ permisos: LECTURA })],
     },
-    seccionFormularioLectura({
-      permisos: LECTURA,
-      pestana: 'Registrar lectura',
-      descripcion: 'Elija el medidor: verá la lectura anterior o inicial antes de guardar.',
-    }),
     {
-      titulo: 'Historial de consumo',
-      pestana: 'Historial de consumo',
+      titulo: 'Lecturas',
+      pestana: 'Lecturas',
+      descripcion: 'Registro de lecturas, correcciones e historial de consumo.',
+      vistas: [
+        seccionFormularioLectura({
+          permisos: LECTURA,
+          pestana: 'Registrar lectura',
+          descripcion: 'Elija el medidor: verá la lectura anterior o inicial antes de guardar.',
+        }),
+        {
+          titulo: 'Historial de consumo',
+          pestana: 'Historial',
       permisos: CONSULTAR,
       ruta: '/lecturas/historial',
       descripcion: 'Consumo por lectura y estado de la factura asociada.',
@@ -138,10 +143,18 @@ export default {
           exito: (r) => (r.salida?.id_alerta ? `Se generó la alerta ${r.salida.id_alerta}.` : 'La lectura no presenta consumo anómalo.'),
         },
       ],
+        },
+      ],
     },
     {
-      titulo: 'Facturas',
-      permisos: VER_FACTURAS,
+      titulo: 'Facturación',
+      pestana: 'Facturación',
+      descripcion: 'Facturas emitidas, ciclo mensual y resumen de consumo por conexión.',
+      vistas: [
+        {
+          titulo: 'Facturas',
+          pestana: 'Facturas',
+          permisos: VER_FACTURAS,
       ruta: '/facturas',
       descripcion: 'Emitidas, con montos, pagos, recargos y saldo.',
       filtros: [
@@ -206,10 +219,12 @@ export default {
       descripcion: 'Consumo acumulado por conexión y período de facturación.',
       transformar: enriquecerResumenMensual,
       columnas: COLUMNAS_RESUMEN_MENSUAL,
+        },
+      ],
     },
     {
       titulo: 'Alertas de consumo anómalo',
-      pestana: 'Alertas de consumo',
+      pestana: 'Alertas',
       permisos: CONSULTAR,
       ruta: '/alertas',
       descripcion: 'Saltos de consumo frente a las reglas de Catálogos. Revise antes de resolver.',

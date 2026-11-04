@@ -133,7 +133,12 @@ function Control({
 
   if (campo.tipo === 'info') {
     return (
-      <div className="campo-info" id={id} role="status">
+      <div
+        className="campo-info"
+        id={id}
+        role="status"
+        title={typeof value === 'string' ? value : undefined}
+      >
         {value}
       </div>
     );
@@ -490,7 +495,7 @@ export const Formulario = forwardRef(function Formulario(
               ) : null}
 
               <button
-                className="boton-aplicar-filtros-pill inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-sky-500 hover:bg-sky-400 text-slate-950 transition-colors shadow-xs cursor-pointer"
+                className="boton-aplicar-filtros-pill inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shadow-xs cursor-pointer"
                 type="submit"
                 disabled={enviando}
                 title="Aplicar filtros de búsqueda"

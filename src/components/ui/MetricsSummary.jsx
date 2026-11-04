@@ -33,6 +33,9 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
 
     const muestra = filas[0] || {};
     const campo = CAMPOS_ESTADO.find((c) => c in muestra);
+    // Sin campo de estado no hay resumen útil: evitamos la tarjeta genérica
+    // de "Total X / registros consultados" que solo repite el contador de la tabla.
+    if (!campo) return [];
 
     const total = filas.length;
     const lista = [];
@@ -49,6 +52,8 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
     if (campo === 'activo') {
       const activos = filas.filter((f) => f.activo === true || f.activo === 1 || String(f.activo).toLowerCase() === 'true').length;
       const inactivos = total - activos;
+      // Si todos están activos no aporta desglose: no mostramos tarjetas.
+      if (inactivos === 0) return [];
       const pct = total > 0 ? Math.round((activos / total) * 100) : 0;
 
       lista.push({
@@ -59,15 +64,13 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
         icono: 'exito',
       });
 
-      if (inactivos > 0) {
-        lista.push({
-          titulo: 'Inactivos',
-          valor: numero(inactivos),
-          detalle: 'Deshabilitados o suspendidos',
-          tono: 'neutral',
-          icono: 'alerta',
-        });
-      }
+      lista.push({
+        titulo: 'Inactivos',
+        valor: numero(inactivos),
+        detalle: 'Deshabilitados o suspendidos',
+        tono: 'neutral',
+        icono: 'alerta',
+      });
 
       lista.push({
         titulo: 'Índice de Vigencia',
@@ -76,7 +79,7 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
         tono: 'cielo',
         icono: 'estadistica',
       });
-    } else if (campo) {
+    } else {
       // Contar por cada estado
       const conteos = new Map();
       filas.forEach((f) => {
@@ -84,6 +87,9 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
         const k = val === null || val === undefined ? 'Sin definir' : String(val);
         conteos.set(k, (conteos.get(k) || 0) + 1);
       });
+
+      // Un solo estado = no hay nada que comparar: no mostramos tarjetas.
+      if (conteos.size < 2) return [];
 
       const ordenados = [...conteos.entries()].sort((a, b) => b[1] - a[1]);
 
@@ -106,7 +112,7 @@ export function MetricsSummary({ filas = [], metricas, tituloModulo = 'Registros
   if (!tarjetas.length) return null;
 
   return (
-    <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 mb-5 ${className}`}>
+    <div className={`metricas-resumen-grid ${className}`}>
       {tarjetas.map((t, idx) => (
         <MetricCard
           key={`${t.titulo}-${idx}`}
