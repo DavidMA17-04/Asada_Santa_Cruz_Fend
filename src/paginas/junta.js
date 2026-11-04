@@ -19,8 +19,13 @@ export default {
   requiereTodos: [P.CONSULTAR_DW, P.CONSULTAR_PAGOS],
   secciones: [
     {
-      titulo: 'Facturado contra recaudado',
+      titulo: 'Finanzas',
       pestana: 'Finanzas',
+      descripcion: 'Facturación, recaudación, morosidad y simulación de tarifas.',
+      vistas: [
+        {
+          titulo: 'Facturado contra recaudado',
+          pestana: 'Facturación',
       permisos: DW,
       ruta: '/dw/facturacion',
       descripcion: 'Cuánto se facturó y cuánto se cobró cada mes (Data Warehouse).',
@@ -55,9 +60,34 @@ export default {
       descripcion: 'Saldo vencido en la última fecha de corte cargada en el Data Warehouse.',
       filtros: [{ nombre: 'fecha_corte', etiqueta: 'Fecha de corte (AAAAMMDD)', marcador: '20261031', max: 8 }],
       grafico: { etiqueta: 'distrito', series: [{ campo: 'saldo_vencido', nombre: 'Saldo vencido' }], formato: moneda },
+        },
+        {
+          titulo: 'Simular un cambio de tarifa',
+          pestana: 'Simular tarifa',
+          tipo: 'formulario',
+          permisos: [],
+          ruta: '/catalogos/tarifas/simular',
+          descripcion: 'Calcula cuánto pagaría un abonado con montos propuestos y lo compara con la tarifa actual. No guarda nada.',
+          campos: [
+            { nombre: 'consumo_m3', etiqueta: 'Consumo (m³)', tipo: 'number', requerido: true, min: 0 },
+            { nombre: 'monto_fijo_propuesto', etiqueta: 'Monto fijo propuesto (₡)', tipo: 'number', requerido: true, min: 0 },
+            { nombre: 'monto_por_m3_propuesto', etiqueta: 'Monto por m³ propuesto (₡)', tipo: 'number', requerido: true, min: 0 },
+            C.tarifa({ nombre: 'id_tarifa_actual', etiqueta: 'Comparar con' }),
+          ],
+          textoEnviar: 'Simular',
+          limpiar: false,
+          mostrarResultado: true,
+          exito: () => 'Simulación calculada.',
+        },
+      ],
     },
     {
-      titulo: 'Consumo de agua',
+      titulo: 'Operación',
+      pestana: 'Operación',
+      descripcion: 'Consumo, incidencias y mantenimientos de la red.',
+      vistas: [
+        {
+          titulo: 'Consumo de agua',
       pestana: 'Consumo',
       permisos: DW,
       ruta: '/dw/consumo',
@@ -106,9 +136,16 @@ export default {
       pestana: 'Mantenimientos',
       permisos: MANT,
       ruta: '/mantenimientos/pendientes',
+        },
+      ],
     },
     {
-      titulo: 'Mantenimientos realizados',
+      titulo: 'Personal',
+      pestana: 'Personal',
+      descripcion: 'Desempeño del personal y auditoría de actividad.',
+      vistas: [
+        {
+          titulo: 'Mantenimientos realizados',
       pestana: 'Trabajo por fontanero',
       permisos: DW,
       ruta: '/dw/mantenimientos',
@@ -120,24 +157,6 @@ export default {
       grafico: { etiqueta: (f) => f.empleado ?? f.tipo_trabajo, series: [{ campo: 'mantenimientos', nombre: 'Mantenimientos' }] },
     },
     {
-      titulo: 'Simular un cambio de tarifa',
-      pestana: 'Simular tarifa',
-      tipo: 'formulario',
-      permisos: [],
-      ruta: '/catalogos/tarifas/simular',
-      descripcion: 'Calcula cuánto pagaría un abonado con montos propuestos y lo compara con la tarifa actual. No guarda nada.',
-      campos: [
-        { nombre: 'consumo_m3', etiqueta: 'Consumo (m³)', tipo: 'number', requerido: true, min: 0 },
-        { nombre: 'monto_fijo_propuesto', etiqueta: 'Monto fijo propuesto (₡)', tipo: 'number', requerido: true, min: 0 },
-        { nombre: 'monto_por_m3_propuesto', etiqueta: 'Monto por m³ propuesto (₡)', tipo: 'number', requerido: true, min: 0 },
-        C.tarifa({ nombre: 'id_tarifa_actual', etiqueta: 'Comparar con' }),
-      ],
-      textoEnviar: 'Simular',
-      limpiar: false,
-      mostrarResultado: true,
-      exito: () => 'Simulación calculada.',
-    },
-    {
       titulo: 'Actividad del personal',
       pestana: 'Auditoría',
       permisos: [P.CONSULTAR_BITACORA],
@@ -146,6 +165,8 @@ export default {
       filtros: [
         { nombre: 'desde', etiqueta: 'Desde', tipo: 'date', requerido: true, valor: fechas.inicioMes },
         { nombre: 'hasta', etiqueta: 'Hasta', tipo: 'date', requerido: true, valor: fechas.hoy },
+      ],
+        },
       ],
     },
   ],

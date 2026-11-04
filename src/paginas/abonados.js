@@ -208,6 +208,14 @@ export default {
           }] : []),
         },
         {
+          texto: 'Estado de cuenta',
+          icono: 'factura',
+          ejecutar: (f) => {
+            const tipo = f.tipo_abonado || (/jur/i.test(f.tipo || '') ? 'JURIDICO' : 'FISICO');
+            window.location.hash = `#/pagos?sec=1&v=1&abonado_ref=${encodeURIComponent(`${tipo}|${f.id_abonado}`)}`;
+          },
+        },
+        {
           texto: 'Editar', permisos: GESTIONAR, metodo: 'PUT',
           titulo: (f) => `Editar a ${f.nombre_completo}`,
           ruta: (f) => `/abonados/${f.tipo_abonado}/${f.id_abonado}`,
@@ -230,17 +238,6 @@ export default {
       permisos: CONSULTAR,
       ruta: '/conexiones/no-activas',
       descripcion: 'Conexiones suspendidas, cortadas o inactivas, con el abonado al que pertenecen.',
-      graficoPastel: {
-        campo: 'estado',
-        estados: ESTADOS.conexion.filter((estado) => estado !== 'Activa'),
-        titulo: 'Conexiones no activas por estado',
-        totalEtiqueta: 'Conexiones',
-        colores: {
-          Suspendida: '#d97706',
-          Cortada: '#b42318',
-          Inactiva: '#64748b',
-        },
-      },
       filtros: [{ nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.conexion.filter((e) => e !== 'Activa') }],
       acciones: ACCIONES_CONEXION.slice(0, 1),
     },
@@ -249,18 +246,6 @@ export default {
       permisos: VER_MEDIDORES,
       ruta: '/medidores',
       descripcion: 'Medidores instalados y su última lectura.',
-      graficoPastel: {
-        campo: 'estado',
-        estados: ESTADOS.medidor,
-        titulo: 'Medidores por estado',
-        totalEtiqueta: 'Medidores',
-        colores: {
-          Activo: '#2e7d47',
-          Dañado: '#d97706',
-          Sustituido: '#64748b',
-          Retirado: '#1b76a6',
-        },
-      },
       filtros: [
         { nombre: 'numero_serie', etiqueta: 'Número de serie' },
         { nombre: 'id_conexion', etiqueta: 'Conexión', tipo: 'number', min: 1 },

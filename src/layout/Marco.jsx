@@ -381,6 +381,12 @@ export function Marco() {
     ? seccionesVisibles(actualPagina, puede)[secActual]
     : null;
 
+  // Vista interna activa de la etapa (pestañas), si tiene.
+  const vistasActuales = subActual?.vistas?.length
+    ? subActual.vistas.filter((v) => puede(v.permisos ?? subActual.permisos ?? actualPagina.permisos ?? []))
+    : [];
+  const vistaActual = vistasActuales[Number(searchParams.get('v')) || 0] || null;
+
   const todasNotificaciones = [
     ...eventosSesion,
     ...alertasSistema,
@@ -553,7 +559,7 @@ export function Marco() {
             </span>
             {subActual ? (
               <span className="barra-sub-migaja">
-                {`/ ${subActual.pestana || subActual.titulo}`}
+                {`/ ${vistaActual?.pestana || subActual.pestana || subActual.titulo}`}
               </span>
             ) : null}
           </div>

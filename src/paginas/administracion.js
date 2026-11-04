@@ -121,8 +121,13 @@ export const dataWarehouse = {
   permisos: [...DW, ...ETL],
   secciones: [
     {
-      titulo: 'Consumo de agua',
-      pestana: 'Consumo',
+      titulo: 'Reportes',
+      pestana: 'Reportes',
+      descripcion: 'Consumo, facturación y morosidad calculados en el Data Warehouse.',
+      vistas: [
+        {
+          titulo: 'Consumo de agua',
+          pestana: 'Consumo',
       permisos: DW,
       ruta: '/dw/consumo',
       descripcion: 'Metros cúbicos consumidos según el Data Warehouse. Los datos se actualizan con cada carga ETL.',
@@ -157,9 +162,16 @@ export const dataWarehouse = {
       descripcion: 'Saldo vencido en una fecha de corte. Sin fecha se usa el último corte cargado.',
       filtros: [{ nombre: 'fecha_corte', etiqueta: 'Fecha de corte (AAAAMMDD)', marcador: '20261031', max: 8 }],
       grafico: { etiqueta: 'distrito', series: [{ campo: 'saldo_vencido', nombre: 'Saldo vencido' }], formato: moneda },
+        },
+      ],
     },
     {
-      titulo: 'Mantenimientos',
+      titulo: 'Operación',
+      pestana: 'Operación',
+      descripcion: 'Mantenimientos e incidencias registrados en el Data Warehouse.',
+      vistas: [
+        {
+          titulo: 'Mantenimientos',
       permisos: DW,
       ruta: '/dw/mantenimientos',
       filtros: [
@@ -193,9 +205,16 @@ export const dataWarehouse = {
           { campo: 'resueltas', nombre: 'Resueltas' },
         ],
       },
+        },
+      ],
     },
     {
-      titulo: 'Cargas ETL',
+      titulo: 'ETL',
+      pestana: 'ETL',
+      descripcion: 'Cargas, última actualización por tabla y conciliación con la base operativa.',
+      vistas: [
+        {
+          titulo: 'Cargas ETL',
       pestana: 'ETL',
       permisos: ETL,
       ruta: '/dw/etl/control',
@@ -244,6 +263,8 @@ export const dataWarehouse = {
         valor: () => `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}`,
       }],
     },
+      ],
+    },
   ],
 };
 
@@ -260,8 +281,13 @@ export const baseDatos = {
       conjuntos: ['Archivos de la base', 'Tablas más grandes', 'Consultas más costosas', 'Último respaldo por tipo', 'Última carga ETL'],
     },
     {
-      titulo: 'Mantenimiento de índices',
-      pestana: 'Índices',
+      titulo: 'Mantenimiento',
+      pestana: 'Mantenimiento',
+      descripcion: 'Índices e integridad de la base de datos.',
+      vistas: [
+        {
+          titulo: 'Mantenimiento de índices',
+          pestana: 'Índices',
       tipo: 'formulario',
       ruta: '/bd/indices',
       descripcion: 'Reorganiza o reconstruye los índices fragmentados. Con "solo reporte" muestra la fragmentación sin cambiar nada.',
@@ -286,6 +312,8 @@ export const baseDatos = {
       limpiar: false,
       mostrarResultado: true,
       exito: () => 'Verificación terminada.',
+        },
+      ],
     },
     {
       titulo: 'Datos y casos de prueba',

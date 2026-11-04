@@ -9,9 +9,18 @@ import {
   Icono,
   Tabla,
   TableroDiagnosticoSLA,
+  TarjetasMisMantenimientos,
+  TimelineHistorial,
   MetricCard,
   MetricsSummary,
   UnifiedFilterBar,
+  PestanasSeccion,
+  GraficoBarras,
+  GraficoDonut,
+  EstadoCuenta,
+  SimulacionMora,
+  TiraTramos,
+  ParametrosMora,
 } from '../ui/index.js';
 import { etiquetaDe, formatearCelda } from '../ui/formato.js';
 
@@ -103,6 +112,15 @@ function BloqueTabla({ filas, opciones = {}, comoDetalle = false, ordenCampos })
       return <pre className="script">{valor}</pre>;
     }
   }
+  // Si las filas corresponden a un historial
+  if (
+    filas.length > 0 &&
+    (filas[0].id_historial_mantenimiento !== undefined ||
+      filas[0].id_historial_incidencia !== undefined ||
+      (filas[0].fecha_evento !== undefined && filas[0].estado_actual !== undefined))
+  ) {
+    return <TimelineHistorial eventos={filas} />;
+  }
   // Una sola fila en vista de detalle (p. ej. Ver saldo): ficha, no tabla con buscar/CSV.
   if (comoDetalle || (filas.length === 1 && opciones.comoDetalle)) {
     return <DetalleRegistro fila={filas[0]} ordenCampos={ordenCampos || opciones.ordenCampos} />;
@@ -111,6 +129,15 @@ function BloqueTabla({ filas, opciones = {}, comoDetalle = false, ordenCampos })
 }
 
 export function VistaResultado({ r, titulos = [], comoDetalle = false, ordenCampos }) {
+  const primeraFila = (r.datos?.[0] || r.conjuntos?.[0]?.[0]);
+  if (
+    primeraFila &&
+    (primeraFila.id_historial_mantenimiento !== undefined ||
+      primeraFila.id_historial_incidencia !== undefined ||
+      (primeraFila.fecha_evento !== undefined && primeraFila.estado_actual !== undefined))
+  ) {
+    return <TimelineHistorial r={r} />;
+  }
   const partes = [];
   const salida = Object.entries(r.salida || {});
   if (salida.length) {
@@ -151,6 +178,9 @@ function mostrarResultado(titulo, r, titulos) {
 const accionesEnVuelo = new Set();
 
 export async function ejecutarAccion(accion, fila, recargar) {
+  if (typeof accion.ejecutar === 'function') {
+    return accion.ejecutar(fila, recargar);
+  }
   const metodo = accion.metodo || 'POST';
   const ruta = resolver(accion.ruta, fila || {});
   const titulo = resolver(accion.titulo, fila || {}) || accion.texto;
@@ -158,11 +188,25 @@ export async function ejecutarAccion(accion, fila, recargar) {
 
   try {
     if (metodo === 'GET') {
+      const esHistorial = Boolean(
+        ruta.includes('/historial') ||
+        accion.esHistorial ||
+        /historial/i.test(accion.texto || '') ||
+        /historial/i.test(titulo || '')
+      );
       const esDetalle = !accion.acciones && !accion.columnas && !accion.botones && !accion.filtros;
-      const modal = abrirModal(titulo, <div className="cargando">Cargando…</div>, { tamano: esDetalle ? 'chico' : 'ancho' });
+      const modal = abrirModal(
+        titulo,
+        <div className="cargando">Cargando…</div>,
+        { tamano: esHistorial ? 'mediano' : (esDetalle ? 'chico' : 'ancho') }
+      );
       const cargar = async () => {
         try {
           const r = await obtener(ruta);
+          if (esHistorial) {
+            modal.reemplazar(<TimelineHistorial r={r} />);
+            return;
+          }
           if (esDetalle) {
             modal.reemplazar(
               <VistaResultado
@@ -198,7 +242,8 @@ export async function ejecutarAccion(accion, fila, recargar) {
       if (accionesEnVuelo.has(llaveVuelo)) return;
       accionesEnVuelo.add(llaveVuelo);
       try {
-        const r = await api(metodo, ruta, { ...(accion.cuerpo?.(fila || {}) || {}), ...datos });
+        const cuerpoBase = typeof accion.cuerpo === 'function' ? accion.cuerpo(fila || {}) : (accion.cuerpo || {});
+        const r = await api(metodo, ruta, { ...cuerpoBase, ...datos });
         avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
         if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
         recargar?.();
@@ -246,6 +291,10 @@ export async function ejecutarAccion(accion, fila, recargar) {
   }
 }
 
+if (typeof window !== 'undefined') {
+  window.ejecutarAccionGlobal = ejecutarAccion;
+}
+
 function Botones({ lista, recargar }) {
   return permitidos(lista).map((b) => {
     const { icono: ic, claseTono } = estiloAccion(b);
@@ -271,11 +320,9 @@ function ContenidoConsulta({
   alCambiarBusqueda,
   exportarRef,
 }) {
-  if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
-    return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
-  }
-
   const acciones = permitidos(def.acciones);
+  const [conjuntoActivo, setConjuntoActivo] = useState(0);
+  const [verGrafico, setVerGrafico] = useState(true);
   const opciones = {
     acciones,
     alAccion: (a, fila) => ejecutarAccion(a, fila, recargar),
@@ -290,6 +337,30 @@ function ContenidoConsulta({
   };
   const botones = permitidos(def.botones || []);
 
+  // Conjuntos: se muestran en pestañas para no apilar tablas y evitar scroll eterno.
+  const totalConjuntos = r?.conjuntos?.length || 0;
+  const indiceConjunto = Math.min(Math.max(conjuntoActivo, 0), Math.max(0, totalConjuntos - 1));
+  const filasConjunto = r?.conjuntos?.[indiceConjunto] || [];
+
+  if (def.ruta === '/mantenimientos/resumen-operativo' && r?.conjuntos) {
+    return <TableroDiagnosticoSLA r={r} def={def} recargar={recargar} />;
+  }
+
+  if (def.ruta === '/mantenimientos/mios') {
+    return (
+      <TarjetasMisMantenimientos
+        filas={r.datos || []}
+        alAccion={(a, fila) => ejecutarAccion(a, fila, recargar)}
+        recargar={recargar}
+        opciones={opciones}
+      />
+    );
+  }
+
+  if (def.ruta === '/estado-cuenta' && r?.conjuntos) {
+    return <EstadoCuenta r={r} def={def} />;
+  }
+
   return (
     <div className="modal-cuerpo-interno">
       {botones.length && def.metodo === 'GET' ? (
@@ -298,14 +369,65 @@ function ContenidoConsulta({
         </div>
       ) : null}
       {def.conjuntos && r.conjuntos ? (
-        r.conjuntos.map((filas, i) => (
-          <div className="bloque-conjunto" key={i}>
-            <h3>{def.conjuntos[i] || `Resultado ${i + 1}`}</h3>
-            <BloqueTabla filas={filas} />
-          </div>
-        ))
+        <div className="conjuntos-pestanas">
+          <PestanasSeccion
+            vistas={def.conjuntos.map((titulo, i) => ({
+              pestana: `${titulo}${r.conjuntos[i]?.length ? ` (${r.conjuntos[i].length})` : ''}`,
+            }))}
+            activa={indiceConjunto}
+            alCambiar={setConjuntoActivo}
+          />
+          <BloqueTabla filas={filasConjunto} />
+        </div>
       ) : (
-        <Tabla filas={r.datos || []} {...opciones} />
+        <>
+          {def.ruta === '/mora/tramos' ? <TiraTramos filas={r.datos || []} /> : null}
+
+          {def.grafico ? (
+            <div className="vistas-pestanas grafico-tabla">
+              <button
+                type="button"
+                className={`vista-pestana${verGrafico ? ' activa' : ''}`}
+                onClick={() => setVerGrafico(true)}
+              >
+                Gráfico
+              </button>
+              <button
+                type="button"
+                className={`vista-pestana${verGrafico ? '' : ' activa'}`}
+                onClick={() => setVerGrafico(false)}
+              >
+                Tabla
+              </button>
+            </div>
+          ) : null}
+
+          {def.graficoPastel && r.datos?.length ? (
+            <div className="graficos-seccion">
+              <div className="tarjeta-mini-grafico">
+                <div className="tarjeta-mini-cabecera">
+                  <strong>{def.graficoPastel.titulo}</strong>
+                </div>
+                <GraficoDonut
+                  segmentos={segmentosPastel(r.datos, def.graficoPastel)}
+                  totalEtiqueta={def.graficoPastel.totalEtiqueta || 'Total'}
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {def.ruta === '/mora/parametros' ? (
+            <ParametrosMora
+              filas={r.datos || []}
+              acciones={acciones}
+              alAccion={opciones.alAccion}
+            />
+          ) : def.grafico && verGrafico && r.datos?.length ? (
+            <GraficoBarras filas={r.datos} {...def.grafico} />
+          ) : (
+            <Tabla filas={r.datos || []} {...opciones} />
+          )}
+        </>
       )}
     </div>
   );
@@ -334,9 +456,19 @@ function SeccionConsulta({ sec, pagina }) {
   const [error, setError] = useState(null);
   const [cargando, setCargando] = useState(sec.cargarAlInicio !== false);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
+  const [searchParams] = useSearchParams();
   const exportarRef = useRef(null);
   const filtrosRef = useRef(null);
   const filtrosActuales = useRef({});
+
+  const filtrosDesdeUrl = useMemo(() => {
+    const valores = {};
+    (sec.filtros || []).forEach((campo) => {
+      const valor = searchParams.get(campo.nombre);
+      if (valor !== null && valor !== '') valores[campo.nombre] = valor;
+    });
+    return valores;
+  }, [searchParams, sec.filtros]);
 
   const cargar = async (filtros = filtrosActuales.current) => {
     const preparados = sec.prepararFiltros ? sec.prepararFiltros(filtros) : filtros;
@@ -359,8 +491,11 @@ function SeccionConsulta({ sec, pagina }) {
   };
 
   useEffect(() => {
-    if (sec.cargarAlInicio === false) return undefined;
-    cargar(filtrosRef.current ? filtrosRef.current.leer() : {});
+    if (sec.cargarAlInicio === false) {
+      if (Object.keys(filtrosDesdeUrl).length) cargar(filtrosDesdeUrl);
+      return undefined;
+    }
+    cargar(filtrosRef.current ? filtrosRef.current.leer() : filtrosDesdeUrl);
     return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sec.ruta]);
@@ -416,8 +551,9 @@ function SeccionConsulta({ sec, pagina }) {
           key={sec.ruta}
           ref={filtrosRef}
           campos={campos}
+          valores={filtrosDesdeUrl}
           filtros
-          textoEnviar="Aplicar filtros"
+          textoEnviar={sec.textoFiltros || 'Aplicar filtros'}
           alEnviar={async (datos) => cargar(datos)}
           alExportar={tieneDatos ? () => exportarRef.current?.() : null}
           terminoBusqueda={terminoBusqueda}
@@ -452,7 +588,13 @@ function SeccionConsulta({ sec, pagina }) {
         </div>
       ) : null}
       {!cargando && !error && !resultado && sec.cargarAlInicio === false ? (
-        <p className="descripcion">Complete los filtros de consulta y presione Aplicar filtros.</p>
+        <div className="estado-inicial">
+          <span className="estado-inicial-icono"><Icono nombre="filtro" /></span>
+          <div>
+            <strong>{sec.mensajeInicial || 'Complete los filtros para consultar'}</strong>
+            <span>Use los filtros de arriba y presione {sec.textoFiltros || 'Aplicar filtros'}.</span>
+          </div>
+        </div>
       ) : null}
     </section>
   );
@@ -619,16 +761,22 @@ const TIPOS = {
   formulario: SeccionFormulario,
   acciones: SeccionAcciones,
   resumen: SeccionResumen,
+  simulacion: SimulacionMora,
 };
 
 export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
   if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
-  return (pagina.secciones || []).filter((s) => puede(s.permisos ?? pagina.permisos ?? []));
+  return (pagina.secciones || []).filter((s) => {
+    const permisos = s.permisos ?? pagina.permisos ?? [];
+    // Una etapa con vistas internas se muestra si el rol puede ver al menos una.
+    if (s.vistas?.length) return s.vistas.some((v) => puede(v.permisos ?? permisos));
+    return puede(permisos);
+  });
 }
 
 export function MotorPagina({ pagina }) {
   const secciones = seccionesVisibles(pagina);
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   if (!secciones.length) {
     return <div className="tarjeta">Su rol no tiene acceso a ninguna sección de este módulo.</div>;
@@ -637,7 +785,30 @@ export function MotorPagina({ pagina }) {
   const paramSec = Number(searchParams.get('sec'));
   const indice = Number.isInteger(paramSec) && paramSec >= 0 && paramSec < secciones.length ? paramSec : 0;
   const sec = secciones[indice];
-  const Tipo = TIPOS[sec.tipo || 'consulta'];
 
+  // Etapa con pestañas internas (Facturas, Pagos, Morosidad, etc.)
+  const vistas = sec.vistas?.length
+    ? sec.vistas.filter((v) => sesion.puede(v.permisos ?? sec.permisos ?? pagina.permisos ?? []))
+    : null;
+
+  if (vistas?.length) {
+    const paramV = Number(searchParams.get('v'));
+    const vistaIndice = Number.isInteger(paramV) && paramV >= 0 && paramV < vistas.length ? paramV : 0;
+    const vista = vistas[vistaIndice];
+    const Tipo = TIPOS[vista.tipo || 'consulta'];
+
+    return (
+      <div className="seccion-con-vistas">
+        <PestanasSeccion
+          vistas={vistas}
+          activa={vistaIndice}
+          alCambiar={(i) => setSearchParams({ sec: String(indice), v: String(i) })}
+        />
+        <Tipo key={`${pagina.id}-${indice}-${vistaIndice}`} sec={vista} pagina={pagina} />
+      </div>
+    );
+  }
+
+  const Tipo = TIPOS[sec.tipo || 'consulta'];
   return <Tipo key={`${pagina.id}-${indice}`} sec={sec} pagina={pagina} />;
 }

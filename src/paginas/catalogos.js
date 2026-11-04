@@ -102,7 +102,12 @@ export default {
   secciones: [
     {
       titulo: 'Tarifas',
-      ruta: '/catalogos/tarifas',
+      pestana: 'Tarifas',
+      descripcion: 'Tarifas vigentes, simulador y tipos de tarifa.',
+      vistas: [
+        {
+          titulo: 'Tarifas',
+          ruta: '/catalogos/tarifas',
       permisos: [],
       descripcion: 'Monto fijo mensual más un monto por metro cúbico. Cada cambio queda en el historial de la tarifa.',
       botones: [{
@@ -161,8 +166,15 @@ export default {
       titulo: 'Tipos de tarifa', ruta: '/catalogos/tipos-tarifa', id: 'id_tipo_tarifa',
       campo: 'nombre_tarifa', etiqueta: 'Nombre', permisos: TARIFAS,
     }),
-    catalogoSimple({
-      titulo: 'Métodos de pago', ruta: '/catalogos/metodos-pago', id: 'id_metodo_pago',
+      ],
+    },
+    {
+      titulo: 'Catálogos generales',
+      pestana: 'Catálogos generales',
+      descripcion: 'Métodos de pago, tipos de trabajo e incidencia y niveles de alerta.',
+      vistas: [
+        catalogoSimple({
+          titulo: 'Métodos de pago', ruta: '/catalogos/metodos-pago', id: 'id_metodo_pago',
       campo: 'nombre_metodo', etiqueta: 'Nombre del método', permisos: [P.GESTIONAR_PAGOS],
       extra: [{
         texto: 'Desactivar', permisos: [P.GESTIONAR_PAGOS], metodo: 'DELETE', peligro: true, visible: (f) => f.activo !== false,
@@ -183,6 +195,8 @@ export default {
       titulo: 'Niveles de alerta', ruta: '/catalogos/niveles-alerta', id: 'id_nivel_alerta',
       campo: 'nombre_nivel', etiqueta: 'Nombre', permisos: CONSUMO,
     }),
+      ],
+    },
     {
       titulo: 'Reglas de consumo anómalo',
       pestana: 'Reglas de consumo',

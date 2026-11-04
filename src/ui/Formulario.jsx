@@ -133,7 +133,12 @@ function Control({
 
   if (campo.tipo === 'info') {
     return (
-      <div className="campo-info" id={id} role="status">
+      <div
+        className="campo-info"
+        id={id}
+        role="status"
+        title={typeof value === 'string' ? value : undefined}
+      >
         {value}
       </div>
     );
@@ -263,6 +268,17 @@ export const Formulario = forwardRef(function Formulario(
   const [filasCatalogo, setFilasCatalogo] = useState({});
   const [error, setError] = useState(null);
   const [enviando, setEnviando] = useState(false);
+  const [exportando, setExportando] = useState(false);
+
+  const handleExportar = useCallback(async () => {
+    if (exportando || !alExportar) return;
+    setExportando(true);
+    try {
+      await alExportar();
+    } finally {
+      setTimeout(() => setExportando(false), 2000);
+    }
+  }, [exportando, alExportar]);
 
   const alCargarFilas = useCallback((nombreCampo, filas) => {
     setFilasCatalogo((prev) => (prev[nombreCampo] === filas ? prev : { ...prev, [nombreCampo]: filas }));
@@ -362,6 +378,17 @@ export const Formulario = forwardRef(function Formulario(
 
   const leer = useCallback(() => leerDeEstado(estado), [estado, leerDeEstado]);
 
+  const alCambiarValor = useCallback((nombreCampo, nuevoValor) => {
+    setEstado((prev) => {
+      const nuevo = { ...prev, [nombreCampo]: nuevoValor };
+      if (filtros && typeof alEnviar === 'function') {
+        const datos = leerDeEstado(nuevo);
+        alEnviar(datos).catch(() => {});
+      }
+      return nuevo;
+    });
+  }, [filtros, alEnviar, leerDeEstado]);
+
   useImperativeHandle(ref, () => ({ leer }), [leer]);
 
   const actualesParaVisibilidad = useMemo(
@@ -423,159 +450,201 @@ export const Formulario = forwardRef(function Formulario(
     </button>
   );
 
+  const hayFiltrosActivos = filtros && Object.values(estado || {}).some(
+    (v) => v !== '' && v !== null && v !== undefined
+  );
+
   return (
-    <form noValidate={false} onSubmit={onSubmit} className={filtros ? 'contenedor-filtros' : ''}>
+    <form
+      noValidate={false}
+      onSubmit={onSubmit}
+      className={filtros ? 'contenedor-filtros-moderno' : ''}
+    >
       {filtros ? (
-        <div className="filtros-cabecera">
-          <div className="filtros-insignia">
-            <Icono nombre="filtro" tamano={14} />
-            <span>Filtros de consulta</span>
+        <div className="barra-filtros-unificada">
+          {/* Fila 1: Búsqueda rápida y acciones */}
+          <div className="barra-filtros-top">
+            {alCambiarBusqueda ? (
+              <div className="filtro-buscador-flexible">
+                <Input
+                  type="search"
+                  variant="pill"
+                  icono="buscar"
+                  clearable
+                  placeholder={placeholderBusqueda}
+                  aria-label="Buscar en los resultados"
+                  value={terminoBusqueda || ''}
+                  onChange={(val) => alCambiarBusqueda(val)}
+                  onClear={() => alCambiarBusqueda('')}
+                />
+              </div>
+            ) : null}
+
+            <div className="filtro-acciones-derecha">
+              {hayFiltrosActivos ? (
+                <button
+                  className="boton-limpiar-pill"
+                  type="button"
+                  disabled={enviando}
+                  onClick={limpiarFiltros}
+                  title="Restablecer filtros"
+                >
+                  <Icono nombre="limpiar" tamano={12} />
+                  <span>Limpiar</span>
+                </button>
+              ) : null}
+
+              <button
+                className="boton-aplicar-filtros-pill inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shadow-xs cursor-pointer"
+                type="submit"
+                disabled={enviando}
+                title="Aplicar filtros de búsqueda"
+              >
+                {enviando ? (
+                  <span className="spinner" aria-hidden="true" />
+                ) : (
+                  <Icono nombre="buscar" tamano={13} />
+                )}
+                <span>{enviando ? 'Filtrando…' : (textoEnviar || 'Filtrar')}</span>
+              </button>
+
+              {cuentaRegistros !== undefined ? (
+                <span className="cuenta-filtro-badge">
+                  <strong>{cuentaRegistros}</strong> {cuentaRegistros === 1 ? 'registro' : 'registros'}
+                </span>
+              ) : null}
+
+              {alExportar ? (
+                <button
+                  className={`boton-exportar-pill ${exportando ? 'descargado' : ''}`}
+                  type="button"
+                  onClick={handleExportar}
+                  disabled={exportando}
+                  title="Descargar reporte en formato CSV compatible con Excel y Google Sheets"
+                >
+                  <Icono
+                    nombre={exportando ? 'check' : 'descargar'}
+                    tamano={13}
+                    className={exportando ? 'text-emerald-400' : 'text-emerald-500'}
+                  />
+                  <span>{exportando ? '¡Descargado!' : 'Exportar CSV'}</span>
+                </button>
+              ) : null}
+            </div>
           </div>
 
-          <div className="filtros-acciones">
-            <button
-              className="boton boton-limpiar"
-              type="button"
-              disabled={enviando}
-              onClick={limpiarFiltros}
-              title="Restablecer filtros"
-            >
-              <Icono nombre="limpiar" tamano={13} />
-              <span>Limpiar</span>
-            </button>
-            {botonEnviar}
+          {/* Fila 2: Selectores de filtro limpios e interactivos */}
+          <div className="barra-filtros-selectores">
+            {visibles.map((campo) => {
+              const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
+              if (oculto) return null;
+              const id = `${baseId}-${campo.nombre}`;
+              const etiquetaTexto =
+                campo.tipo === 'info'
+                  ? etiquetaCampoInfo(campo)
+                  : (campo.etiqueta ?? etiquetaDe(campo.nombre));
+
+              return (
+                <div key={campo.nombre} className="filtro-item-pill">
+                  <span className="filtro-item-label">{etiquetaTexto}:</span>
+                  <div className="filtro-item-control">
+                    <Control
+                      campo={campo}
+                      id={id}
+                      value={campo.tipo === 'info' ? textoCampoInfo(campo) : estado[campo.nombre]}
+                      onChange={(v) => alCambiarValor(campo.nombre, v)}
+                      filtros={filtros}
+                      alCargarFilas={alCargarFilas}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      ) : null}
+      ) : (
+        /* Formulario estándar para modales y capturas de datos */
+        <>
+          <div className="form-rejilla">
+            {visibles.map((campo) => {
+              const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
+              const id = `${baseId}-${campo.nombre}`;
+              const etiquetaTexto =
+                campo.tipo === 'info'
+                  ? etiquetaCampoInfo(campo)
+                  : (campo.etiqueta ?? etiquetaDe(campo.nombre));
+              const etiqueta = (
+                <label htmlFor={id}>
+                  <span>{etiquetaTexto}</span>
+                  {campo.requerido ? <span className="requerido"> *</span> : null}
+                </label>
+              );
+              const control = (
+                <Control
+                  campo={campo}
+                  id={id}
+                  value={campo.tipo === 'info' ? textoCampoInfo(campo) : estado[campo.nombre]}
+                  onChange={(v) => setEstado((s) => ({ ...s, [campo.nombre]: v }))}
+                  onBlurCedula={consultarCedulaHacienda}
+                  cargandoHacienda={cargandoHacienda}
+                  exitoHacienda={exitoHacienda}
+                  filtros={false}
+                  alCargarFilas={alCargarFilas}
+                />
+              );
+              return (
+                <div
+                  key={campo.nombre}
+                  className={`${
+                    campo.tipo === 'checkbox'
+                      ? 'campo campo-check'
+                      : `campo ${campo.ancho || campo.tipo === 'textarea' ? 'ancho-completo' : ''}`
+                  }${oculto ? ' oculto' : ''}`}
+                >
+                  {campo.tipo === 'checkbox' ? (
+                    <>
+                      {control}
+                      {etiqueta}
+                    </>
+                  ) : (
+                    <>
+                      {etiqueta}
+                      {control}
+                      {campo.ayuda ? <div className="ayuda">{campo.ayuda}</div> : null}
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-      {/* Si hay búsqueda unificada integrada a los filtros */}
-      {filtros && (alCambiarBusqueda || cuentaRegistros !== undefined || alExportar) ? (
-        <div className="filtros-busqueda-fila">
-          {alCambiarBusqueda ? (
-            <div className="flex-1">
-              <Input
-                type="search"
-                variant="pill"
-                icono="buscar"
-                clearable
-                placeholder={placeholderBusqueda}
-                aria-label="Buscar en los resultados"
-                value={terminoBusqueda || ''}
-                onChange={(val) => alCambiarBusqueda(val)}
-                onClear={() => alCambiarBusqueda('')}
-              />
+          {!filtros && mensajeHacienda ? (
+            <div
+              className={`text-xs mt-2 px-3 py-1.5 rounded-lg border flex items-center gap-2 ${
+                exitoHacienda
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+              }`}
+            >
+              <span>{exitoHacienda ? '✓' : 'ℹ'}</span>
+              <span>{mensajeHacienda}</span>
             </div>
           ) : null}
 
-          <div className="filtros-acciones">
-            {cuentaRegistros !== undefined ? (
-              <span className="cuenta-filtro-badge">
-                <strong>{cuentaRegistros}</strong> {cuentaRegistros === 1 ? 'registro' : 'registros'}
-              </span>
-            ) : null}
+          {extras}
 
-            {alExportar ? (
-              <button
-                className="boton boton-filtro-exportar"
-                type="button"
-                onClick={alExportar}
-                title="Descargar en formato CSV"
-              >
-                <Icono nombre="descargar" tamano={13} />
-                <span>Exportar CSV</span>
+          {error ? <div className="error-form" role="alert">{error}</div> : null}
+
+          <div className="form-pie">
+            {botonEnviar}
+            {alCancelar ? (
+              <button className="boton" type="button" onClick={alCancelar}>
+                Cancelar
               </button>
             ) : null}
           </div>
-        </div>
-      ) : null}
-
-      <div className={filtros ? 'form-filtros-grid' : 'form-rejilla'}>
-        {visibles.map((campo) => {
-          const oculto = campo.visibleSi ? !campo.visibleSi(actualesParaVisibilidad) : false;
-          const id = `${baseId}-${campo.nombre}`;
-          const etiquetaTexto = campo.tipo === 'info' ? etiquetaCampoInfo(campo) : (campo.etiqueta ?? etiquetaDe(campo.nombre));
-          const etiqueta = (
-            <label
-              htmlFor={id}
-              className={
-                filtros
-                  ? 'inline-flex items-center gap-1.5 select-none'
-                  : ''
-              }
-            >
-              {filtros ? <Icono nombre="filtro" tamano={12} /> : null}
-              <span>{etiquetaTexto}</span>
-              {campo.requerido ? <span className="requerido"> *</span> : null}
-            </label>
-          );
-          const control = (
-            <Control
-              campo={campo}
-              id={id}
-              value={campo.tipo === 'info' ? textoCampoInfo(campo) : estado[campo.nombre]}
-              onChange={(v) => setEstado((s) => ({ ...s, [campo.nombre]: v }))}
-              onBlurCedula={consultarCedulaHacienda}
-              cargandoHacienda={cargandoHacienda}
-              exitoHacienda={exitoHacienda}
-              filtros={filtros}
-              alCargarFilas={alCargarFilas}
-            />
-          );
-          return (
-            <div
-              key={campo.nombre}
-              className={`${campo.tipo === 'checkbox'
-                  ? 'campo campo-check'
-                  : `campo ${campo.ancho || campo.tipo === 'textarea' ? 'ancho-completo' : ''}`
-                }${oculto ? ' oculto' : ''}`}
-            >
-              {campo.tipo === 'checkbox' ? (
-                <>
-                  {control}
-                  {etiqueta}
-                </>
-              ) : (
-                <>
-                  {etiqueta}
-                  {control}
-                  {campo.ayuda ? <div className="ayuda">{campo.ayuda}</div> : null}
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Notificación informativa sutil sobre Hacienda en formularios */}
-      {!filtros && mensajeHacienda ? (
-        <div
-          className={`text-xs mt-2 px-3 py-1.5 rounded-lg border flex items-center gap-2 ${exitoHacienda
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
-            }`}
-        >
-          <span>{exitoHacienda ? '✓' : 'ℹ'}</span>
-          <span>{mensajeHacienda}</span>
-        </div>
-      ) : null}
-
-      {extras}
-      {error ? (
-        <div className="error-form" role="alert">
-          {error}
-        </div>
-      ) : null}
-
-      {!filtros ? (
-        <div className="form-pie">
-          {botonEnviar}
-          {alCancelar ? (
-            <button className="boton" type="button" onClick={alCancelar}>
-              Cancelar
-            </button>
-          ) : null}
-        </div>
-      ) : null}
+        </>
+      )}
     </form>
   );
 });

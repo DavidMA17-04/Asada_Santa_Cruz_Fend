@@ -1,6 +1,44 @@
 import { createElement } from 'react';
 
 const SIGLAS = { id: 'ID', m3: 'm³', mb: 'MB', dw: 'DW', etl: 'ETL', bd: 'BD', sla: 'SLA' };
+const NOMBRES_ASADA = {
+  id_historial_mantenimiento: 'Nº Evento en bitácora',
+  id_historial_incidencia: 'Nº Evento de avería',
+  id_mantenimiento: 'Nº Orden de trabajo',
+  id_incidencia: 'Nº Reporte de avería',
+  id_conexion: 'Nº Conexión / Servicio',
+  id_abonado_fisico: 'Abonado físico',
+  id_abonado_juridico: 'Abonado jurídico',
+  id_medidor: 'Medidor de agua',
+  numero_serie: 'Nº Serie del medidor',
+  fecha_evento: 'Fecha de registro',
+  fecha_incidente: 'Fecha del reporte',
+  fecha_inicio: 'Fecha de inicio programada',
+  fecha_fin: 'Fecha de finalización',
+  tipo_trabajo: 'Labor de fontanería',
+  nombre_trabajo: 'Labor técnica',
+  tipo_incidencia: 'Tipo de avería',
+  estado_anterior: 'Estado inicial',
+  estado_actual: 'Nuevo estado',
+  empleado: 'Fontanero / Responsable',
+  responsable: 'Fontanero a cargo',
+  anotacion: 'Bitácora técnica de campo',
+  observacion: 'Observación técnica',
+  detalle: 'Detalle de la labor realizada',
+  ubicacion: 'Dirección del abonado',
+  horas_resolucion: 'Tiempo de atención (h)',
+  sla_horas: 'Plazo SLA (h)',
+  estado_sla: 'Semáforo SLA',
+  horas_duracion: 'Duración en campo (h)',
+  horas_promedio_resolucion: 'Promedio resolución (h)',
+  monto_total: 'Total facturado',
+  saldo: 'Saldo pendiente',
+  saldo_actual_factura: 'Saldo de factura',
+  lectura_anterior: 'Lectura anterior (m³)',
+  lectura_actual: 'Lectura actual (m³)',
+  consumo_m3: 'Consumo registrado (m³)',
+};
+
 const ACENTOS = {
   conexion: 'conexión', identificacion: 'identificación', direccion: 'dirección', telefono: 'teléfono',
   electronico: 'electrónico', emision: 'emisión', metodo: 'método', descripcion: 'descripción',
@@ -17,6 +55,7 @@ const ACENTOS = {
 
 /** "fecha_ultima_lectura" -> "Fecha última lectura" */
 export function etiquetaDe(campo) {
+  if (NOMBRES_ASADA[campo]) return NOMBRES_ASADA[campo];
   const palabras = campo.split('_').filter(Boolean).map((p) => SIGLAS[p] || ACENTOS[p] || p);
   const texto = palabras.join(' ');
   return texto.charAt(0).toUpperCase() + texto.slice(1);
@@ -52,6 +91,9 @@ const CAMPOS_INSIGNIA = /^(estado|estado_factura|estado_final|estado_sla|estado_
 
 /** Devuelve { contenido, clase } para mostrar un valor en una celda. */
 export function formatearCelda(campo, valor) {
+  if (campo === 'estado_anterior' && (valor === null || valor === undefined || valor === '' || valor === '—' || valor === '-')) {
+    return { contenido: '(Creación inicial)', clase: 'texto-suave' };
+  }
   if (valor === null || valor === undefined || valor === '') return { contenido: '—', clase: '' };
   if (typeof valor === 'boolean') {
     return { contenido: createElement('span', { className: `insignia ${valor ? 'verde' : ''}` }, valor ? 'Sí' : 'No'), clase: '' };
