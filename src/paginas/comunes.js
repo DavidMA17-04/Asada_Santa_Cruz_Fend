@@ -57,6 +57,14 @@ export const C = {
     (f) => `${f.id_conexion} · ${f.ubicacion ?? ''} · ${f.abonado ?? ''}`),
   empleado: catalogo('id_empleado', 'Empleado', '/seguridad/empleados', 'id_empleado',
     (f) => `${f.nombre_completo} (${f.puesto})`, (f) => f.activo),
+  // Solo empleados activos con puesto de fontanero (no ayudantes ni personal de oficina).
+  fontanero: catalogo('id_empleado', 'Fontanero', '/seguridad/empleados', 'id_empleado',
+    'nombre_completo', (f) => f.activo && /^fontanero/i.test(String(f.puesto || '').trim())),
+  // Para relacionar sin escribir el número: se elige de la lista.
+  incidencia: catalogo('id_incidencia', 'Incidencia relacionada', '/incidencias/abiertas', 'id_incidencia',
+    (f) => `#${f.id_incidencia} · ${f.tipo} · ${f.medidor ?? `conexión ${f.id_conexion}`} · ${f.prioridad}`),
+  alerta: catalogo('id_alerta', 'Alerta de consumo relacionada', '/alertas/activas', 'id_alerta',
+    (f) => `#${f.id_alerta} · ${f.nombre_regla} · ${f.medidor} · nivel ${f.nivel}`, (f) => !f.id_incidencia),
   rol: catalogo('id_rol', 'Rol', '/seguridad/roles', 'id_rol', 'nombre_rol'),
   modulo: catalogo('id_modulo', 'Módulo', '/seguridad/modulos', 'id_modulo', 'nombre_modulo'),
   permiso: catalogo('id_permiso', 'Permiso', '/seguridad/permisos', 'id_permiso',

@@ -518,13 +518,13 @@ export default {
     {
       titulo: 'Morosidad',
       pestana: 'Morosidad',
-      descripcion: '1) Revise las conexiones con saldo vencido. 2) Ajuste los límites en Parámetros. 3) Use Simulación para ver el impacto antes de suspender o reactivar.',
+      descripcion: '1) Revise las conexiones con saldo vencido. 2) Ajuste los límites en Parámetros. 3) Suspenda o reactive según corresponda.',
       vistas: [
         {
           titulo: 'Reporte de morosidad',
           pestana: 'Morosos',
           ruta: '/mora/reporte',
-      descripcion: 'Conexiones con facturas vencidas. Revise el detalle y use la pestaña Simulación para ver cuántas se suspenderían.',
+      descripcion: 'Conexiones con facturas vencidas. Revise el detalle antes de suspender o reactivar.',
       mensajeVacio: 'No hay conexiones morosas con los filtros indicados.',
       placeholderBusqueda: 'Buscar abonado, identificación o conexión…',
       transformar: enriquecerReporteMora,
@@ -560,6 +560,7 @@ export default {
           titulo: 'Simulación de suspensión',
           pestana: 'Simulación',
           tipo: 'simulacion',
+          ocultarA: ['Administrador del Sistema'],
           ruta: '/mora/suspender',
           permisos: CONSULTAR,
           descripcion: 'Ajuste los días de atraso y el saldo mínimo para ver qué conexiones se suspenderían antes de aplicar el cambio.',

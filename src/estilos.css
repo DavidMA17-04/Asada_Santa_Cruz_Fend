@@ -5464,3 +5464,15 @@ th.th-acciones {
   color: #94a9be !important;
   border-bottom: 1px solid #1E3142 !important;
 }
+/* Pantalla "sin acceso" del flujo por rol */
+.tarjeta.sin-permiso {
+  max-width: 520px;
+  margin: 48px auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.tarjeta.sin-permiso h2 { margin: 0; }
+.tarjeta.sin-permiso p { margin: 0; opacity: .8; line-height: 1.5; }

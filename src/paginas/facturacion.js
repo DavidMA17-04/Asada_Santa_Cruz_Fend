@@ -76,6 +76,7 @@ export default {
     {
       titulo: 'Lecturas',
       pestana: 'Lecturas',
+      ocultarA: ['Administrador del Sistema'],
       descripcion: 'Registro de lecturas, correcciones e historial de consumo.',
       vistas: [
         seccionFormularioLectura({
@@ -260,7 +261,7 @@ export default {
             texto: f.observacion || 'Sin observaciones todavía.',
           },
           { nombre: 'estado', etiqueta: 'Estado', requerido: true, opciones: ESTADOS.alerta },
-          { nombre: 'id_incidencia', etiqueta: 'Incidencia relacionada (opcional)', tipo: 'number', min: 1 },
+          C.incidencia({ etiqueta: 'Incidencia relacionada (opcional)', ancho: true }),
           { nombre: 'observacion', etiqueta: 'Nueva observación', tipo: 'textarea', max: 250, ancho: true, marcador: 'Opcional' },
         ],
         inicial: () => ({ estado: 'Resuelta' }),
