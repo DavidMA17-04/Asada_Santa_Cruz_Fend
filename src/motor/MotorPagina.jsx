@@ -764,12 +764,20 @@ const TIPOS = {
   simulacion: SimulacionMora,
 };
 
+function vistaPermitida(vista, permisosPadre, puede) {
+  if (vista.excluirSi?.some((p) => puede([p]))) return false;
+  return puede(vista.permisos ?? permisosPadre);
+}
+
 export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
   if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
+  if (pagina.excluirSi?.some((p) => puede([p]))) return [];
   return (pagina.secciones || []).filter((s) => {
+    // Ocultar secciones de flujo de campo cuando el usuario también gestiona (p. ej. admin).
+    if (s.excluirSi?.some((p) => puede([p]))) return false;
     const permisos = s.permisos ?? pagina.permisos ?? [];
     // Una etapa con vistas internas se muestra si el rol puede ver al menos una.
-    if (s.vistas?.length) return s.vistas.some((v) => puede(v.permisos ?? permisos));
+    if (s.vistas?.length) return s.vistas.some((v) => vistaPermitida(v, permisos, puede));
     return puede(permisos);
   });
 }
@@ -788,14 +796,14 @@ export function MotorPagina({ pagina }) {
 
   // Etapa con pestañas internas (Facturas, Pagos, Morosidad, etc.)
   const vistas = sec.vistas?.length
-    ? sec.vistas.filter((v) => sesion.puede(v.permisos ?? sec.permisos ?? pagina.permisos ?? []))
+    ? sec.vistas.filter((v) => vistaPermitida(v, sec.permisos ?? pagina.permisos ?? [], sesion.puede))
     : null;
 
   if (vistas?.length) {
     const paramV = Number(searchParams.get('v'));
     const vistaIndice = Number.isInteger(paramV) && paramV >= 0 && paramV < vistas.length ? paramV : 0;
     const vista = vistas[vistaIndice];
-    const Tipo = TIPOS[vista.tipo || 'consulta'];
+    const Tipo = TIPOS[vista.tipo || 'consulta'] || TIPOS.consulta;
 
     return (
       <div className="seccion-con-vistas">
@@ -809,6 +817,6 @@ export function MotorPagina({ pagina }) {
     );
   }
 
-  const Tipo = TIPOS[sec.tipo || 'consulta'];
+  const Tipo = TIPOS[sec.tipo || 'consulta'] || TIPOS.consulta;
   return <Tipo key={`${pagina.id}-${indice}`} sec={sec} pagina={pagina} />;
 }

@@ -4739,7 +4739,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   height: 28px;
   display: grid;
   place-items: center;
-  border: 0;
+    border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--texto);

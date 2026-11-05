@@ -127,8 +127,10 @@ const FUENTES_ALERTAS = [
     id: 'mantenimiento-mios',
     modulo: 'Mis mantenimientos',
     icono: 'herramienta',
-    destino: '/mantenimiento?sec=0',
+    destino: '/campo?sec=0',
     permisos: [P.EJECUTAR_MANTENIMIENTO],
+    // No mostrar al admin/gestor: es flujo del fontanero.
+    excluirSi: [P.GESTIONAR_MANTENIMIENTO],
     cargar: () => obtener('/mantenimientos/mios'),
     construir: (filas) => {
       const activas = filas.filter((f) => f.estado === 'Programado' || f.estado === 'En proceso');
@@ -336,7 +338,9 @@ export function Marco() {
   }, []);
 
   const cargarNotificaciones = useCallback(async () => {
-    const activas = FUENTES_ALERTAS.filter((f) => puede(f.permisos));
+    const activas = FUENTES_ALERTAS.filter((f) => (
+      puede(f.permisos) && !f.excluirSi?.some((p) => puede([p]))
+    ));
     if (!activas.length) {
       setAlertasSistema([]);
       return;

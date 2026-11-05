@@ -229,6 +229,8 @@ export default {
       titulo: 'Mis mantenimientos en campo',
       pestana: 'Mi jornada',
       permisos: EJECUTAR,
+      // Solo ejecutor de campo; el admin usa la bandeja y el listado general.
+      excluirSi: [P.GESTIONAR_MANTENIMIENTO],
       ruta: '/mantenimientos/mios',
       descripcion: 'Órdenes de trabajo asignadas a usted. Pase el trabajo a "En proceso" al iniciar en sitio y finalícelo al terminar la labor.',
       mensajeVacio: 'No tiene mantenimientos pendientes en este momento.',

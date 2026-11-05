@@ -27,10 +27,14 @@ export default {
   titulo: 'Trabajo de campo',
   icono: 'herramienta',
   permisos: [P.EJECUTAR_MANTENIMIENTO],
+  // Módulo exclusivo del fontanero; el admin usa Lecturas/Facturación y Mantenimiento.
+  excluirSi: [P.GESTIONAR_MANTENIMIENTO],
   secciones: [
     {
       titulo: 'Mis trabajos pendientes',
       pestana: 'Mis trabajos',
+      // Solo fontanero / ejecutor: el admin gestiona desde Mantenimiento e incidencias.
+      excluirSi: [P.GESTIONAR_MANTENIMIENTO],
       ruta: '/mantenimientos/mios',
       descripcion: 'Mantenimientos asignados a usted. Márquelos "En proceso" al empezar y ciérrelos al terminar.',
       filtros: [{ nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.mantenimiento }],
