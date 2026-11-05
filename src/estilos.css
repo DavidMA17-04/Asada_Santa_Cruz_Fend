@@ -2558,20 +2558,21 @@ td {
 }
 
 th {
-  background: #f0f7fc;
+  background: var(--superficie-2) !important;
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #0C3B5E;
+  color: var(--texto-suave) !important;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 
-:root[data-tema="oscuro"] th {
-  background: rgba(56, 182, 255, 0.08);
-  color: #7dd3fc;
+:root[data-tema="oscuro"] th,
+.dark th {
+  background: #15222E !important;
+  color: #94a9be !important;
 }
 
 th:hover {
@@ -5245,7 +5246,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   color: var(--texto-suave);
 }
 
-/* Bot髇 principal de filtros: paleta institucional y sin colapsar en m髒il */
+/* Bot锟絥 principal de filtros: paleta institucional y sin colapsar en m锟絭il */
 .boton-aplicar-filtros-pill {
   background: #1A5B8C !important;
   color: #ffffff !important;
@@ -5276,4 +5277,190 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     margin-left: 0 !important;
     justify-content: flex-start !important;
   }
+}
+
+
+/* ==========================================================
+   ANIMACI脫N CIRCULAR Y REGLAS DE ALTO CONTRASTE (CLARO / OSCURO)
+   ========================================================== */
+
+/* 1. Transici贸n de vista circular nativa */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+::view-transition-old(root) {
+  z-index: 1 !important;
+}
+
+::view-transition-new(root) {
+  z-index: 9999 !important;
+}
+
+/* 2. Bot贸n toggle sol / luna interactivo con micro-rotaci贸n */
+.boton-tema-toggle {
+  position: relative;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 999px !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease !important;
+}
+
+.boton-tema-toggle:hover {
+  transform: rotate(18deg) scale(1.1) !important;
+}
+
+.boton-tema-toggle:active {
+  transform: rotate(0deg) scale(0.92) !important;
+}
+
+/* 3. Correcci贸n de contraste en Insignias (BadgeStatus) en modo oscuro y claro */
+:root[data-tema="oscuro"] .insignia.verde {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(52, 211, 153, 0.5) !important;
+  color: #34d399 !important;
+}
+
+:root[data-tema="oscuro"] .insignia.ambar {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  color: #fbbf24 !important;
+}
+
+:root[data-tema="oscuro"] .insignia.rojo {
+  background: rgba(244, 63, 94, 0.15) !important;
+  border-color: rgba(251, 113, 133, 0.5) !important;
+  color: #fb7185 !important;
+}
+
+:root[data-tema="oscuro"] .insignia.azul {
+  background: rgba(14, 165, 233, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  color: #38bdf8 !important;
+}
+
+:root[data-tema="claro"] .insignia.verde,
+.insignia.verde {
+  background: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #047857 !important;
+}
+
+:root[data-tema="claro"] .insignia.ambar,
+.insignia.ambar {
+  background: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+:root[data-tema="claro"] .insignia.rojo,
+.insignia.rojo {
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+
+:root[data-tema="claro"] .insignia.azul,
+.insignia.azul {
+  background: #f0f9ff !important;
+  border-color: #bae6fd !important;
+  color: #0369a1 !important;
+}
+
+/* 4. Inputs y Selects perfectamente visibles en ambos temas */
+input,
+select,
+textarea {
+  color-scheme: light dark;
+}
+
+:root[data-tema="oscuro"] input,
+:root[data-tema="oscuro"] select,
+:root[data-tema="oscuro"] textarea {
+  color-scheme: dark !important;
+}
+
+:root[data-tema="claro"] input,
+:root[data-tema="claro"] select,
+:root[data-tema="claro"] textarea {
+  color-scheme: light !important;
+}
+
+
+/* ==========================================================
+   ARMONIZACI脫N TOTAL DE ENCABEZADOS DE TABLA (CLARO Y OSCURO)
+   ========================================================== */
+table th,
+.tabla-envoltura table thead th,
+.tabla-envoltura table thead tr,
+th.th-acciones {
+  background: var(--superficie-2) !important;
+  color: var(--texto-suave) !important;
+  border-bottom: 1px solid var(--borde) !important;
+}
+
+:root[data-tema="oscuro"] table th,
+:root[data-tema="oscuro"] .tabla-envoltura table thead th,
+:root[data-tema="oscuro"] .tabla-envoltura table thead tr,
+:root[data-tema="oscuro"] th.th-acciones,
+.dark table th,
+.dark .tabla-envoltura table thead th,
+.dark .tabla-envoltura table thead tr,
+.dark th.th-acciones {
+  background: #15222E !important;
+  color: #94a9be !important;
+  border-bottom: 1px solid #1E3142 !important;
+}
+
+:root[data-tema="oscuro"] .tabla-envoltura,
+.dark .tabla-envoltura {
+  background: #111C26 !important;
+  border-color: #1E3142 !important;
+}
+
+
+/* ==========================================================
+   VIEW TRANSITION CIRCULAR RIPPLE EFFECT & TOTAL HEADER HARMONY
+   ========================================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none !important;
+  mix-blend-mode: normal !important;
+}
+
+::view-transition-old(root) {
+  z-index: 1 !important;
+}
+
+::view-transition-new(root) {
+  z-index: 9999 !important;
+}
+
+/* Encabezados de tabla: 100% integrados sin parches claros en modo oscuro */
+table thead tr,
+table thead th,
+.tabla-envoltura table thead tr,
+.tabla-envoltura table thead th,
+th.th-acciones {
+  background: var(--superficie-2) !important;
+  color: var(--texto-suave) !important;
+  border-bottom: 1px solid var(--borde) !important;
+}
+
+:root[data-tema="oscuro"] table thead tr,
+:root[data-tema="oscuro"] table thead th,
+:root[data-tema="oscuro"] .tabla-envoltura table thead tr,
+:root[data-tema="oscuro"] .tabla-envoltura table thead th,
+:root[data-tema="oscuro"] th.th-acciones,
+.dark table thead tr,
+.dark table thead th,
+.dark .tabla-envoltura table thead tr,
+.dark .tabla-envoltura table thead th,
+.dark th.th-acciones {
+  background: #15222E !important;
+  color: #94a9be !important;
+  border-bottom: 1px solid #1E3142 !important;
 }

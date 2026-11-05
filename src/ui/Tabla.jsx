@@ -81,9 +81,8 @@ function MenuAccionesFila({ acciones, fila, alAccion }) {
           setAbierto((v) => !v);
         }}
       >
-        <Icono nombre="accion" tamano={16} />
         <span>Acciones</span>
-        <Icono nombre="abajo" tamano={12} />
+        <Icono nombre="abajo" tamano={12} className={`icono-flecha-menu ${abierto ? 'rotado' : ''}`} />
       </button>
       {abierto ? (
         <div
