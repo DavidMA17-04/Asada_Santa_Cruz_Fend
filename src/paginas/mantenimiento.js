@@ -138,10 +138,7 @@ const COLUMNAS_MANTENIMIENTOS = [
 const CAMPOS_INCIDENCIA = [
   C.medidor({ requerido: true, ancho: true }),
   C.tipoIncidencia({ requerido: true }),
-  { nombre: 'fecha_incidente', etiqueta: 'Fecha del incidente', tipo: 'date', valor: fechas.hoy },
-  { nombre: 'ubicacion', etiqueta: 'Ubicación específica', max: 200, ayuda: 'Si se deja vacía, se tomará automáticamente la dirección de la conexión.' },
-  C.alerta({ etiqueta: 'Alerta de consumo relacionada (opcional)', ancho: true }),
-  { nombre: 'descripcion', etiqueta: 'Descripción detallada de la anomalía', tipo: 'textarea', requerido: true, max: 500, marcador: 'Describa fuga, presión baja, rotura o daño visible…' },
+  { nombre: 'descripcion', etiqueta: 'Descripción de la anomalía o avería', tipo: 'textarea', requerido: true, max: 500, marcador: 'Describa brevemente la fuga, rotura, baja presión o daño observado...' },
 ];
 
 const ACCION_AUTO_ASIGNAR = {
@@ -151,9 +148,9 @@ const ACCION_AUTO_ASIGNAR = {
   ruta: (f) => `/incidencias/${f.id_incidencia}/mantenimiento-automatico`,
   campos: [
     C.tipoTrabajo({ requerido: true }),
-    { nombre: 'fecha_inicio', etiqueta: 'Fecha programada de inicio', tipo: 'date', valor: fechas.hoy },
-    { nombre: 'descripcion', etiqueta: 'Instrucciones técnicas para el fontanero', tipo: 'textarea', max: 500, ayuda: 'El sistema seleccionará automáticamente al fontanero activo con menor carga activa y mejor tasa de cumplimiento.' },
+    { nombre: 'descripcion', etiqueta: 'Instrucciones del trabajo (opcional)', tipo: 'textarea', max: 500, ayuda: 'Si se deja vacío, tomará la descripción de la incidencia.' },
   ],
+  cuerpo: (valores, f) => ({ ...valores, fecha_inicio: fechas.hoy(), descripcion: valores.descripcion || f?.descripcion || null }),
   exito: (r) => `Orden de mantenimiento #${r.salida?.id_mantenimiento} asignada con éxito al técnico ID ${r.salida?.id_empleado_asignado}.`,
 };
 
@@ -164,9 +161,9 @@ const ACCION_ASIGNAR_MANUAL = {
   campos: [
     C.fontanero({ etiqueta: 'Fontanero responsable', requerido: true, ancho: true }),
     C.tipoTrabajo({ requerido: true }),
-    { nombre: 'fecha_inicio', etiqueta: 'Fecha de inicio programada', tipo: 'date', valor: fechas.hoy },
-    { nombre: 'descripcion', etiqueta: 'Instrucciones para el trabajo', tipo: 'textarea', max: 500 },
+    { nombre: 'descripcion', etiqueta: 'Instrucciones para el trabajo (opcional)', tipo: 'textarea', max: 500 },
   ],
+  cuerpo: (valores, f) => ({ ...valores, fecha_inicio: fechas.hoy(), descripcion: valores.descripcion || f?.descripcion || null }),
   exito: (r) => `Mantenimiento #${r.salida?.id_mantenimiento} programado.`,
 }
 
@@ -184,7 +181,18 @@ const ACCIONES_MANTENIMIENTO = [
         opciones: ['Programado', 'En proceso', 'Cancelado'],
         ayuda: 'Para dar por finalizado el trabajo use el botón "Cerrar orden".',
       },
-      { nombre: 'anotacion', etiqueta: 'Anotación / Bitácora', tipo: 'textarea', max: 250 },
+      {
+        nombre: 'anotacion',
+        etiqueta: 'Anotación / Justificación técnica (obligatoria si cancela)',
+        tipo: 'textarea',
+        max: 250,
+        validar: (val, estado) => {
+          if (estado?.nuevo_estado === 'Cancelado' && !String(val || '').trim()) {
+            return 'Debe indicar el motivo o justificación técnica para cancelar la orden de mantenimiento.';
+          }
+          return null;
+        },
+      },
     ],
     inicial: (f) => ({ nuevo_estado: f.estado }),
     exito: () => 'Estado actualizado.',
@@ -274,6 +282,7 @@ export default {
           icono: 'mas',
           ruta: '/incidencias',
           campos: CAMPOS_INCIDENCIA,
+          cuerpo: (v) => ({ ...v, fecha_incidente: fechas.hoy() }),
           textoEnviar: 'Registrar reporte',
           exito: (r) => `Incidencia #${r.salida?.id_incidencia} registrada con éxito. La prioridad y SLA han sido calculados automáticamente.`,
         },
@@ -378,8 +387,7 @@ export default {
             C.conexion({ requerido: true, ancho: true }),
             C.fontanero({ etiqueta: 'Fontanero responsable', requerido: true }),
             C.tipoTrabajo({ requerido: true }),
-            { nombre: 'fecha_inicio', etiqueta: 'Fecha programada de inicio', tipo: 'date', valor: fechas.hoy },
-            C.incidencia({ etiqueta: 'Incidencia relacionada (opcional)', ancho: true }),
+            { nombre: 'fecha_inicio', etiqueta: 'Fecha programada de inicio', tipo: 'date', valor: fechas.hoy, min: fechas.hoy, validar: (v) => (v && v < fechas.hoy() ? 'No se puede programar en una fecha anterior a la de hoy.' : null) },
             { nombre: 'descripcion', etiqueta: 'Instrucciones del trabajo', tipo: 'textarea', max: 500 },
           ],
           textoEnviar: 'Crear orden',

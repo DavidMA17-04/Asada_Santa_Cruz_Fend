@@ -267,6 +267,7 @@ export const Formulario = forwardRef(function Formulario(
   const [estado, setEstado] = useState(() => valoresIniciales(campos, valores));
   const [filasCatalogo, setFilasCatalogo] = useState({});
   const [error, setError] = useState(null);
+  const [erroresCampos, setErroresCampos] = useState({});
   const [enviando, setEnviando] = useState(false);
   const [exportando, setExportando] = useState(false);
 
@@ -400,17 +401,23 @@ export const Formulario = forwardRef(function Formulario(
     evento.preventDefault();
     setError(null);
     const datos = leer();
+    const nuevosErrores = {};
     for (const campo of visibles) {
       if (campo.tipo === 'info') continue;
       if (campo.visibleSi && !campo.visibleSi(actualesParaVisibilidad)) continue;
-      if (typeof campo.validar === 'function') {
+      if (campo.requerido && (estado[campo.nombre] === '' || estado[campo.nombre] === null || estado[campo.nombre] === undefined)) {
+        nuevosErrores[campo.nombre] = 'Este campo es obligatorio.';
+      } else if (typeof campo.validar === 'function') {
         const mensaje = campo.validar(estado[campo.nombre], estado, { filasCatalogo });
-        if (mensaje) {
-          setError(mensaje);
-          return;
-        }
+        if (mensaje) nuevosErrores[campo.nombre] = mensaje;
       }
     }
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErroresCampos(nuevosErrores);
+      setError('Por favor complete o corrija los campos requeridos marcados en rojo.');
+      return;
+    }
+    setErroresCampos({});
     setEnviando(true);
     try {
       await alEnviar(datos);
@@ -610,6 +617,12 @@ export const Formulario = forwardRef(function Formulario(
                     <>
                       {etiqueta}
                       {control}
+                      {erroresCampos[campo.nombre] ? (
+                        <div className="text-xs text-rose-500 font-medium mt-1 inline-flex items-center gap-1.5">
+                          <Icono nombre="alerta" tamano={12} />
+                          <span>{erroresCampos[campo.nombre]}</span>
+                        </div>
+                      ) : null}
                       {campo.ayuda ? <div className="ayuda">{campo.ayuda}</div> : null}
                     </>
                   )}

@@ -387,7 +387,7 @@ export function Tabla({
       <div className="tabla-envoltura rounded-xl border border-[var(--borde)] bg-[var(--superficie)] shadow-2xs">
         <table className="w-full text-center text-sm border-collapse">
           <thead>
-            <tr className="border-b border-[var(--borde)] bg-[var(--superficie-2)]/60 text-[var(--texto-suave)] font-semibold text-xs uppercase tracking-wider">
+            <tr className="border-b border-[var(--borde)] dark:border-[#1E3142] bg-[var(--superficie-2)] dark:bg-[#15222E] text-[var(--texto-suave)] dark:text-[#94a9be] font-semibold text-xs uppercase tracking-wider">
               {cols.map((c) => {
                 const activo = orden?.campo === c.campo;
                 const centrada = esColumnaCentrada(c.campo, c.etiqueta);
@@ -395,7 +395,7 @@ export function Tabla({
                   <th
                     key={c.campo}
                     onClick={() => ordenar(c.campo)}
-                    className="py-3 px-3 cursor-pointer hover:text-[var(--acento)] select-none transition-colors text-center"
+                    className="py-3 px-3 cursor-pointer hover:text-[var(--acento)] select-none transition-colors text-center bg-inherit"
                     title="Ordenar por esta columna"
                   >
                     <div className="inline-flex items-center justify-center gap-1.5 w-full">
@@ -408,7 +408,7 @@ export function Tabla({
                 );
               })}
               {acciones.length ? (
-                <th className="th-acciones py-3 px-3 font-semibold text-xs tracking-wider uppercase text-center">
+                <th className="th-acciones py-3 px-3 font-semibold text-xs tracking-wider uppercase text-center bg-inherit">
                   Acciones
                 </th>
               ) : null}

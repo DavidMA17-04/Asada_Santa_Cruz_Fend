@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, obtener } from '../api.js';
 import { useSesion } from '../contexto/Sesion.jsx';
@@ -264,8 +265,63 @@ export function Marco() {
 
   useEffect(() => {
     document.documentElement.dataset.tema = temaOscuro ? 'oscuro' : 'claro';
+    document.documentElement.classList.toggle('dark', temaOscuro);
     localStorage.setItem('asada_tema', temaOscuro ? 'oscuro' : 'claro');
   }, [temaOscuro]);
+
+  async function alternarTema(evento) {
+    const rect = evento?.currentTarget?.getBoundingClientRect?.();
+    const x = (evento?.clientX && evento.clientX > 0)
+      ? evento.clientX
+      : (rect ? rect.left + rect.width / 2 : window.innerWidth - 80);
+    const y = (evento?.clientY && evento.clientY > 0)
+      ? evento.clientY
+      : (rect ? rect.top + rect.height / 2 : 40);
+    const finRadio = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const nuevoTema = !temaOscuro;
+
+    const aplicarTemaEnDOM = (oscuro) => {
+      document.documentElement.dataset.tema = oscuro ? 'oscuro' : 'claro';
+      document.documentElement.classList.toggle('dark', oscuro);
+      localStorage.setItem('asada_tema', oscuro ? 'oscuro' : 'claro');
+    };
+
+    if (!document.startViewTransition) {
+      aplicarTemaEnDOM(nuevoTema);
+      setTemaOscuro(nuevoTema);
+      return;
+    }
+
+    const transition = document.startViewTransition(() => {
+      aplicarTemaEnDOM(nuevoTema);
+      flushSync(() => {
+        setTemaOscuro(nuevoTema);
+      });
+    });
+
+    try {
+      await transition.ready;
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${Math.round(x)}px ${Math.round(y)}px)`,
+            `circle(${Math.round(finRadio)}px at ${Math.round(x)}px ${Math.round(y)}px)`,
+          ],
+        },
+        {
+          duration: 650,
+          easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+    } catch (err) {
+      console.warn('Transición de vista cancelada o no disponible', err);
+    }
+  }
 
   useEffect(() => {
     const cerrar = () => {
@@ -575,7 +631,7 @@ export function Marco() {
               className="boton-icono"
               type="button"
               title={temaOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              onClick={() => setTemaOscuro((v) => !v)}
+              onClick={(e) => alternarTema(e)}
             >
               <Icono nombre={temaOscuro ? 'sol' : 'luna'} />
             </button>
