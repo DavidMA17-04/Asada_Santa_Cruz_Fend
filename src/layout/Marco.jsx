@@ -2,10 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, obtener } from '../api.js';
 import { useSesion } from '../contexto/Sesion.jsx';
-import { seccionesVisibles } from '../motor/MotorPagina.jsx';
+import { claveDe, indiceDe, seccionesVisibles, vistasVisibles } from '../motor/MotorPagina.jsx';
 import { fechas } from '../paginas/comunes.js';
 import { INICIO, PAGINAS } from '../paginas/index.js';
 import { P } from '../permisos.js';
+import { inicioDelRol, ocultoParaRol, ordenarModulos, perfilRol, ruta } from '../roles.js';
 import { abrirModal, avisar, Formulario, Icono, moneda, suscribirNotificaciones } from '../ui/index.js';
 
 const suma = (filas, campo) => filas.reduce((t, f) => t + (Number(f[campo]) || 0), 0);
@@ -23,7 +24,7 @@ const FUENTES_ALERTAS = [
     id: 'abonados-conexiones',
     modulo: 'Abonados y conexiones',
     icono: 'usuarios',
-    destino: '/abonados?sec=1',
+    destino: ruta('abonados', 'Conexiones no activas'),
     permisos: [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS],
     cargar: () => obtener('/conexiones/no-activas'),
     construir: (filas) => (filas.length > 0 ? {
@@ -37,7 +38,7 @@ const FUENTES_ALERTAS = [
     id: 'facturacion-sin-lectura',
     modulo: 'Lecturas y facturación',
     icono: 'medidor',
-    destino: '/facturacion?sec=0',
+    destino: ruta('facturacion', 'Ruta de lectura'),
     permisos: [P.REGISTRAR_LECTURA, P.CONSULTAR_FACTURAS, P.GESTIONAR_FACTURACION],
     cargar: () => obtener('/medidores/sin-lectura'),
     construir: (filas) => (filas.length > 0 ? {
@@ -51,7 +52,7 @@ const FUENTES_ALERTAS = [
     id: 'facturacion-alertas',
     modulo: 'Lecturas y facturación',
     icono: 'alerta',
-    destino: '/facturacion?sec=6',
+    destino: ruta('facturacion', 'Alertas'),
     permisos: [P.CONSULTAR_FACTURAS, P.GESTIONAR_FACTURACION],
     cargar: () => obtener('/alertas/activas'),
     construir: (filas) => (filas.length > 0 ? {
@@ -65,7 +66,7 @@ const FUENTES_ALERTAS = [
     id: 'pagos-pendientes',
     modulo: 'Pagos y morosidad',
     icono: 'factura',
-    destino: '/pagos?sec=0',
+    destino: ruta('pagos', 'Facturas'),
     permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS],
     cargar: () => obtener('/facturas/pendientes'),
     construir: (filas) => (filas.length > 0 ? {
@@ -79,7 +80,7 @@ const FUENTES_ALERTAS = [
     id: 'pagos-morosos',
     modulo: 'Pagos y morosidad',
     icono: 'pago',
-    destino: '/pagos?sec=2',
+    destino: ruta('pagos', 'Morosidad'),
     permisos: [P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS],
     cargar: () => obtener('/mora/morosos'),
     construir: (filas) => (filas.length > 0 ? {
@@ -93,7 +94,7 @@ const FUENTES_ALERTAS = [
     id: 'mantenimiento-incidencias',
     modulo: 'Mantenimiento e incidencias',
     icono: 'alerta',
-    destino: '/mantenimiento?sec=1',
+    destino: ruta('mantenimiento', 'Incidencias'),
     permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO],
     cargar: () => obtener('/incidencias/abiertas'),
     construir: (filas) => {
@@ -112,7 +113,7 @@ const FUENTES_ALERTAS = [
     id: 'mantenimiento-ordenes',
     modulo: 'Mantenimiento e incidencias',
     icono: 'herramienta',
-    destino: '/mantenimiento?sec=3',
+    destino: ruta('mantenimiento', 'Mantenimientos'),
     permisos: [P.CONSULTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO],
     cargar: () => obtener('/mantenimientos/pendientes'),
     construir: (filas) => (filas.length > 0 ? {
@@ -126,8 +127,9 @@ const FUENTES_ALERTAS = [
     id: 'mantenimiento-mios',
     modulo: 'Mis mantenimientos',
     icono: 'herramienta',
-    destino: '/mantenimiento?sec=0',
+    destino: ruta('mantenimiento', 'Mi jornada'),
     permisos: [P.EJECUTAR_MANTENIMIENTO],
+    ocultarA: ['Administrador del Sistema'],
     cargar: () => obtener('/mantenimientos/mios'),
     construir: (filas) => {
       const activas = filas.filter((f) => f.estado === 'Programado' || f.estado === 'En proceso');
@@ -143,7 +145,7 @@ const FUENTES_ALERTAS = [
     id: 'seguridad-bloqueados',
     modulo: 'Seguridad',
     icono: 'escudo',
-    destino: '/seguridad?sec=0',
+    destino: ruta('seguridad', 'Usuarios'),
     permisos: [P.GESTIONAR_SEGURIDAD],
     cargar: () => obtener('/seguridad/usuarios/bloqueados'),
     construir: (filas) => (filas.length > 0 ? {
@@ -157,7 +159,7 @@ const FUENTES_ALERTAS = [
     id: 'respaldos-estado',
     modulo: 'Respaldos',
     icono: 'respaldo',
-    destino: '/respaldos?sec=1',
+    destino: ruta('respaldos', 'Historial'),
     permisos: [P.RESPALDOS],
     cargar: () => obtener('/respaldos/historial', { desde: fechas.haceDias(7) }),
     construir: (filas) => {
@@ -186,7 +188,7 @@ const FUENTES_ALERTAS = [
     id: 'dw-etl-fallidas',
     modulo: 'Reportes y Data Warehouse',
     icono: 'grafico',
-    destino: '/dw?sec=4',
+    destino: ruta('dw', 'ETL'),
     permisos: [P.ETL],
     cargar: () => obtener('/dw/etl/fallidas'),
     construir: (filas) => (filas.length > 0 ? {
@@ -222,8 +224,10 @@ export function Marco() {
   const { actual, borrar, puede } = useSesion();
   const u = actual.usuario;
   const iniciales = (u.nombre_empleado || u.nombre_usuario).split(' ').slice(0, 2).map((p) => p[0]).join('').toUpperCase();
-  const modulos = PAGINAS.filter((p) => seccionesVisibles(p, puede).length > 0);
+  const modulos = ordenarModulos(u.nombre_rol, PAGINAS.filter((p) => seccionesVisibles(p, puede).length > 0));
   const disponibles = [INICIO, ...modulos];
+  const inicioRol = inicioDelRol(u.nombre_rol, modulos);
+  const perfil = perfilRol(u.nombre_rol);
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -241,7 +245,9 @@ export function Marco() {
 
   const id = location.pathname.replace(/^\//, '') || 'inicio';
   const actualPagina = disponibles.find((p) => p.id === id) || INICIO;
-  const secActual = Number(searchParams.get('sec')) || 0;
+  const secActual = actualPagina.secciones
+    ? indiceDe(seccionesVisibles(actualPagina, puede), searchParams.get('sec'))
+    : 0;
 
   const [expandidos, setExpandidos] = useState(() => ({ [id]: true }));
 
@@ -278,7 +284,7 @@ export function Marco() {
   }, []);
 
   const cargarNotificaciones = useCallback(async () => {
-    const activas = FUENTES_ALERTAS.filter((f) => puede(f.permisos));
+    const activas = FUENTES_ALERTAS.filter((f) => puede(f.permisos) && !ocultoParaRol(f, u.nombre_rol));
     if (!activas.length) {
       setAlertasSistema([]);
       return;
@@ -383,9 +389,9 @@ export function Marco() {
 
   // Vista interna activa de la etapa (pestañas), si tiene.
   const vistasActuales = subActual?.vistas?.length
-    ? subActual.vistas.filter((v) => puede(v.permisos ?? subActual.permisos ?? actualPagina.permisos ?? []))
+    ? vistasVisibles(subActual, actualPagina.permisos ?? [], puede, u.nombre_rol)
     : [];
-  const vistaActual = vistasActuales[Number(searchParams.get('v')) || 0] || null;
+  const vistaActual = vistasActuales[indiceDe(vistasActuales, searchParams.get('v'))] || null;
 
   const todasNotificaciones = [
     ...eventosSesion,
@@ -403,7 +409,7 @@ export function Marco() {
   return (
     <div className={`marco${menuAbierto ? ' menu-abierto' : ''}${colapsado ? ' lateral-colapsado' : ''}`}>
       <aside className="lateral">
-        <Link to="/inicio" className="lateral-marca">
+        <Link to={inicioRol} className="lateral-marca">
           <img src="/logo-asada.png" alt="Logo ASADA Santa Cruz" className="lateral-logo-img" />
           <div className="lateral-texto-marca">
             <strong>ASADA Santa Cruz</strong>
@@ -411,7 +417,7 @@ export function Marco() {
           </div>
         </Link>
 
-        <div className="lateral-etiqueta">Menú principal</div>
+        <div className="lateral-etiqueta" title={perfil.descripcion || undefined}>Menú principal</div>
         <nav className="nav">
           <NavLink
             to="/inicio"
@@ -445,7 +451,7 @@ export function Marco() {
               <div key={p.id} className={`nav-grupo${activoModulo ? ' grupo-activo' : ''}${abierto ? ' abierto' : ''}`}>
                 <div className={`nav-cabecera-grupo${activoModulo ? ' activo' : ''}`}>
                   <Link
-                    to={`/${p.id}?sec=0`}
+                    to={`/${p.id}`}
                     title={p.titulo}
                     className="nav-enlace-principal"
                     onClick={() => {
@@ -473,7 +479,7 @@ export function Marco() {
                       return (
                         <Link
                           key={s.pestana || s.titulo}
-                          to={`/${p.id}?sec=${idx}`}
+                          to={`/${p.id}?sec=${claveDe(s)}`}
                           className={`nav-subitem${subActiva ? ' sub-activo' : ''}`}
                         >
                           <span className="sub-punto" />
