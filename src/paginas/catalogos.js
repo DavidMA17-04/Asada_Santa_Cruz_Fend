@@ -99,6 +99,8 @@ export default {
   titulo: 'Catálogos',
   icono: 'lista',
   permisos: [],
+  // Solo lo administra el Administrador del Sistema.
+  ocultarA: ['Administrador de BD', 'Fontanero', 'Junta Directiva'],
   secciones: [
     {
       titulo: 'Tarifas',
