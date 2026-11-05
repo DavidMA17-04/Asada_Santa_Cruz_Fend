@@ -1,3 +1,4 @@
+import { flushSync } from 'react-dom';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, obtener } from '../api.js';
@@ -232,7 +233,11 @@ export function Marco() {
   const [menuPerfil, setMenuPerfil] = useState(false);
   const [menuNotificaciones, setMenuNotificaciones] = useState(false);
   const [filtroNotif, setFiltroNotif] = useState('todas');
-  const [temaOscuro, setTemaOscuro] = useState(() => localStorage.getItem('asada_tema') === 'oscuro');
+  const [temaOscuro, setTemaOscuro] = useState(() => {
+    const guardado = localStorage.getItem('asada_tema');
+    if (guardado) return guardado === 'oscuro';
+    return Boolean(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  });
 
   const [alertasSistema, setAlertasSistema] = useState([]);
   const [eventosSesion, setEventosSesion] = useState([]);
@@ -257,9 +262,62 @@ export function Marco() {
   }, [actualPagina.titulo, location.pathname, searchParams]);
 
   useEffect(() => {
-    document.documentElement.dataset.tema = temaOscuro ? 'oscuro' : 'claro';
-    localStorage.setItem('asada_tema', temaOscuro ? 'oscuro' : 'claro');
+    const modo = temaOscuro ? 'oscuro' : 'claro';
+    document.documentElement.dataset.tema = modo;
+    document.documentElement.classList.toggle('dark', temaOscuro);
+    document.documentElement.style.colorScheme = temaOscuro ? 'dark' : 'light';
+    localStorage.setItem('asada_tema', modo);
   }, [temaOscuro]);
+
+  const alternarTema = (ev) => {
+    const nuevoTema = !temaOscuro;
+
+    const aplicar = () => {
+      setTemaOscuro(nuevoTema);
+      document.documentElement.dataset.tema = nuevoTema ? 'oscuro' : 'claro';
+      document.documentElement.classList.toggle('dark', nuevoTema);
+      document.documentElement.style.colorScheme = nuevoTema ? 'dark' : 'light';
+      localStorage.setItem('asada_tema', nuevoTema ? 'oscuro' : 'claro');
+    };
+
+    if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      aplicar();
+      return;
+    }
+
+    const rect = ev?.currentTarget?.getBoundingClientRect();
+    const x = (ev?.clientX && ev.clientX > 0) ? ev.clientX : (rect ? rect.left + rect.width / 2 : window.innerWidth - 40);
+    const y = (ev?.clientY && ev.clientY > 0) ? ev.clientY : (rect ? rect.top + rect.height / 2 : 30);
+
+    const radioFinal = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transicion = document.startViewTransition(() => {
+      flushSync(() => {
+        aplicar();
+      });
+    });
+
+    transicion.ready.then(() => {
+      const clipPath = [
+        `circle(0px at ${x}px ${y}px)`,
+        `circle(${radioFinal}px at ${x}px ${y}px)`,
+      ];
+
+      document.documentElement.animate(
+        {
+          clipPath: clipPath,
+        },
+        {
+          duration: 550,
+          easing: 'ease-in-out',
+          pseudoElement: '::view-transition-new(root)',
+        }
+      );
+    });
+  };
 
   useEffect(() => {
     const cerrar = () => {
@@ -566,10 +624,11 @@ export function Marco() {
 
           <div className="barra-acciones">
             <button
-              className="boton-icono"
+              className="boton-icono boton-tema-toggle"
               type="button"
               title={temaOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-              onClick={() => setTemaOscuro((v) => !v)}
+              onClick={alternarTema}
+              aria-label={temaOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             >
               <Icono nombre={temaOscuro ? 'sol' : 'luna'} />
             </button>
