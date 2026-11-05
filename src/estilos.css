@@ -2558,21 +2558,20 @@ td {
 }
 
 th {
-  background: var(--superficie-2) !important;
+  background: #f0f7fc;
   font-weight: 700;
   font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--texto-suave) !important;
+  color: #0C3B5E;
   white-space: nowrap;
   cursor: pointer;
   user-select: none;
 }
 
-:root[data-tema="oscuro"] th,
-.dark th {
-  background: #15222E !important;
-  color: #94a9be !important;
+:root[data-tema="oscuro"] th {
+  background: rgba(56, 182, 255, 0.08);
+  color: #7dd3fc;
 }
 
 th:hover {
@@ -4739,7 +4738,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   height: 28px;
   display: grid;
   place-items: center;
-    border: 0;
+  border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--texto);
@@ -5280,6 +5279,328 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
 }
 
 
+
+
+
+
+/* ==========================================================
+   MEJORAS VISUALES: BOTONES ELEGANTES, MENÚ DE ACCIONES Y CENTRADO DE TABLAS
+   ========================================================== */
+
+/* 1. Centrado total en tablas */
+table {
+  text-align: center !important;
+}
+
+table th,
+table td,
+.tabla-envoltura table thead th,
+.tabla-envoltura table tbody td,
+.tabla-td,
+td.num,
+td.fecha,
+td.texto-largo,
+th.th-acciones,
+td.tabla-celda-acciones,
+td.acciones {
+  text-align: center !important;
+  vertical-align: middle !important;
+}
+
+.tabla-envoltura table thead th > div,
+.tabla-td > div,
+td.tabla-celda-acciones > div {
+  justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  text-align: center !important;
+}
+
+.tabla-td .badge-status,
+.tabla-td .badge-sla,
+.tabla-td .insignia {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* 2. Botón Primario Institucional (Aplicar filtros, Guardar, Crear) */
+.boton.primario,
+.boton.boton-aplicar-filtros,
+.boton-aplicar-filtros-pill,
+button.boton-aplicar-filtros-pill {
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  color: #ffffff !important;
+  border-radius: 999px !important;
+  padding: 8px 20px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  transform: none !important;
+}
+
+.boton.primario:hover:not(:disabled),
+.boton.boton-aplicar-filtros:hover:not(:disabled),
+.boton-aplicar-filtros-pill:hover:not(:disabled),
+button.boton-aplicar-filtros-pill:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 20px rgba(14, 165, 233, 0.45) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+.boton.primario:active:not(:disabled),
+.boton.boton-aplicar-filtros:active:not(:disabled),
+.boton-aplicar-filtros-pill:active:not(:disabled) {
+  transform: translateY(0) scale(0.98) !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25) !important;
+}
+
+:root[data-tema="oscuro"] .boton.primario,
+:root[data-tema="oscuro"] .boton.boton-aplicar-filtros,
+:root[data-tema="oscuro"] .boton-aplicar-filtros-pill {
+  background: linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 16px rgba(14, 165, 233, 0.35) !important;
+}
+
+/* 3. Botón Limpiar / Secundario */
+.boton-limpiar-pill,
+.boton.boton-limpiar,
+.boton:not(.primario):not(.peligro):not(.exito):not(.menu-acciones-trigger):not(.menu-acciones-item) {
+  background: rgba(148, 163, 184, 0.08) !important;
+  border: 1px solid rgba(148, 163, 184, 0.25) !important;
+  color: #94a3b8 !important;
+  border-radius: 999px !important;
+  padding: 6px 16px !important;
+  font-size: 12.5px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.boton-limpiar-pill:hover:not(:disabled),
+.boton.boton-limpiar:hover:not(:disabled),
+.boton:not(.primario):not(.peligro):not(.exito):not(.menu-acciones-trigger):not(.menu-acciones-item):hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.1) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #38bdf8 !important;
+  transform: translateY(-1.5px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* 4. Botón Exportar CSV */
+.boton-exportar-pill,
+.boton.exito {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  color: #34d399 !important;
+  border-radius: 999px !important;
+  padding: 6px 16px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.15) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.boton-exportar-pill:hover:not(:disabled),
+.boton.exito:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: #10b981 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3) !important;
+  transform: translateY(-1.5px) !important;
+}
+
+/* 5. MENÚ DE ACCIONES DESPLEGABLE EN TABLAS */
+.menu-acciones-fila {
+  position: relative !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 auto !important;
+}
+
+/* Botón disparador 'Acciones ˅' (Estilo pastilla moderno, sin 3 puntos) */
+.menu-acciones-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  min-height: 29px !important;
+  padding: 5px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(56, 189, 248, 0.45) !important;
+  background: rgba(14, 165, 233, 0.08) !important;
+  color: #38bdf8 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.15) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  user-select: none !important;
+}
+
+.menu-acciones-trigger:hover,
+.menu-acciones-fila.abierto .menu-acciones-trigger {
+  background: rgba(14, 165, 233, 0.22) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(14, 165, 233, 0.35) !important;
+  transform: translateY(-1px) !important;
+}
+
+.menu-acciones-trigger:active {
+  transform: translateY(0) scale(0.97) !important;
+}
+
+.icono-flecha-menu {
+  transition: transform 0.2s ease !important;
+}
+
+.icono-flecha-menu.rotado {
+  transform: rotate(180deg) !important;
+}
+
+/* Desplegable flotante de acciones */
+.menu-acciones-lista {
+  position: fixed !important;
+  z-index: 1200 !important;
+  min-width: 175px !important;
+  padding: 6px !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--borde) !important;
+  background: var(--superficie) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32), 0 0 1px rgba(0, 0, 0, 0.2) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  animation: accionFadeIn 0.14s ease-out !important;
+}
+
+@keyframes accionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Cada opción dentro del menú de acciones */
+.menu-acciones-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 9px !important;
+  width: 100% !important;
+  padding: 7px 12px !important;
+  border: 0 !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--texto) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.menu-acciones-item:hover {
+  background: rgba(14, 165, 233, 0.12) !important;
+  color: #38bdf8 !important;
+  transform: translateX(2px) !important;
+}
+
+.menu-acciones-item.peligro {
+  color: #fb7185 !important;
+}
+
+.menu-acciones-item.peligro:hover {
+  background: rgba(244, 63, 94, 0.14) !important;
+  color: #f43f5e !important;
+}
+
+/* Modo oscuro para el menú */
+:root[data-tema="oscuro"] .menu-acciones-trigger {
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  color: #7dd3fc !important;
+}
+
+:root[data-tema="oscuro"] .menu-acciones-trigger:hover,
+:root[data-tema="oscuro"] .menu-acciones-fila.abierto .menu-acciones-trigger {
+  background: rgba(14, 165, 233, 0.25) !important;
+  color: #ffffff !important;
+}
+
+:root[data-tema="oscuro"] .menu-acciones-item.peligro {
+  color: #fda4af !important;
+}
+
+:root[data-tema="oscuro"] .menu-acciones-item.peligro:hover {
+  background: rgba(244, 63, 94, 0.2) !important;
+  color: #fecdd3 !important;
+}
+
+/* 6. Botones deshabilitados */
+.boton:disabled,
+.boton-aplicar-filtros-pill:disabled,
+.boton-limpiar-pill:disabled,
+.boton-exportar-pill:disabled,
+.menu-acciones-trigger:disabled,
+button:disabled {
+  background: rgba(148, 163, 184, 0.12) !important;
+  border-color: transparent !important;
+  color: #64748b !important;
+  box-shadow: none !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  opacity: 0.7 !important;
+}
+/* Pantalla "sin acceso" del flujo por rol */
+.tarjeta.sin-permiso {
+  max-width: 520px;
+  margin: 48px auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.tarjeta.sin-permiso h2 { margin: 0; }
+.tarjeta.sin-permiso p { margin: 0; opacity: .8; line-height: 1.5; }
+
+
 /* ==========================================================
    ANIMACIÓN CIRCULAR Y REGLAS DE ALTO CONTRASTE (CLARO / OSCURO)
    ========================================================== */
@@ -5464,3 +5785,4 @@ th.th-acciones {
   color: #94a9be !important;
   border-bottom: 1px solid #1E3142 !important;
 }
+

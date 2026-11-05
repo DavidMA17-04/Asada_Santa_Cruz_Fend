@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api, obtener, sesion } from '../api.js';
+import { ocultoParaRol, slug } from '../roles.js';
 import {
   abrirModal,
   avisar,
@@ -66,7 +67,8 @@ function estiloAccion(b = {}) {
 }
 
 const resolver = (valor, ...args) => (typeof valor === 'function' ? valor(...args) : valor);
-const permitidos = (lista = []) => lista.filter((x) => sesion.puede(x.permisos || []));
+const rolActual = () => sesion.actual?.usuario?.nombre_rol;
+const permitidos = (lista = []) => lista.filter((x) => sesion.puede(x.permisos || []) && !ocultoParaRol(x, rolActual()));
 const camposDe = (campos, fila) => permitidos(resolver(campos, fila) || []);
 
 const TEXTO_SCRIPT = /^(RESTORE|BACKUP|DBCC|ALTER|USE|--)/m;
@@ -242,7 +244,7 @@ export async function ejecutarAccion(accion, fila, recargar) {
       if (accionesEnVuelo.has(llaveVuelo)) return;
       accionesEnVuelo.add(llaveVuelo);
       try {
-        const cuerpoBase = typeof accion.cuerpo === 'function' ? accion.cuerpo(fila || {}) : (accion.cuerpo || {});
+        const cuerpoBase = typeof accion.cuerpo === 'function' ? await accion.cuerpo(fila || {}) : (accion.cuerpo || {});
         const r = await api(metodo, ruta, { ...cuerpoBase, ...datos });
         avisar(accion.exito ? accion.exito(r, fila) : 'Operación realizada.');
         if (accion.mostrarResultado) mostrarResultado(titulo, r, accion.titulosResultado);
@@ -764,22 +766,34 @@ const TIPOS = {
   simulacion: SimulacionMora,
 };
 
-function vistaPermitida(vista, permisosPadre, puede) {
-  if (vista.excluirSi?.some((p) => puede([p]))) return false;
-  return puede(vista.permisos ?? permisosPadre);
-}
-
-export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p)) {
+export function seccionesVisibles(pagina, puede = (p) => sesion.puede(p), rol = rolActual()) {
   if (pagina.requiereTodos?.some((p) => !puede([p]))) return [];
-  if (pagina.excluirSi?.some((p) => puede([p]))) return [];
+  if (ocultoParaRol(pagina, rol)) return [];
   return (pagina.secciones || []).filter((s) => {
-    // Ocultar secciones de flujo de campo cuando el usuario también gestiona (p. ej. admin).
-    if (s.excluirSi?.some((p) => puede([p]))) return false;
+    if (ocultoParaRol(s, rol)) return false;
     const permisos = s.permisos ?? pagina.permisos ?? [];
     // Una etapa con vistas internas se muestra si el rol puede ver al menos una.
-    if (s.vistas?.length) return s.vistas.some((v) => vistaPermitida(v, permisos, puede));
+    if (s.vistas?.length) return vistasVisibles(s, permisos, puede, rol).length > 0;
     return puede(permisos);
   });
+}
+
+// Clave de una pestaña o vista en la URL (?sec=mi-jornada&v=por-cobrar).
+export const claveDe = (item) => slug(item.pestana || item.titulo);
+
+// Posición de la pestaña pedida en la URL. Acepta la clave (lo normal) o el
+// número de posición (enlaces viejos). Si no existe para este rol, da 0.
+export function indiceDe(lista = [], valor) {
+  if (valor == null || valor === '') return 0;
+  const n = Number(valor);
+  if (Number.isInteger(n)) return n >= 0 && n < lista.length ? n : 0;
+  const i = lista.findIndex((x) => claveDe(x) === slug(valor));
+  return i === -1 ? 0 : i;
+}
+
+// Vistas internas (pestañas) de una etapa que el rol puede ver.
+export function vistasVisibles(sec, permisosBase = [], puede = (p) => sesion.puede(p), rol = rolActual()) {
+  return (sec.vistas || []).filter((v) => !ocultoParaRol(v, rol) && puede(v.permisos ?? sec.permisos ?? permisosBase));
 }
 
 export function MotorPagina({ pagina }) {
@@ -790,18 +804,16 @@ export function MotorPagina({ pagina }) {
     return <div className="tarjeta">Su rol no tiene acceso a ninguna sección de este módulo.</div>;
   }
 
-  const paramSec = Number(searchParams.get('sec'));
-  const indice = Number.isInteger(paramSec) && paramSec >= 0 && paramSec < secciones.length ? paramSec : 0;
+  const indice = indiceDe(secciones, searchParams.get('sec'));
   const sec = secciones[indice];
 
   // Etapa con pestañas internas (Facturas, Pagos, Morosidad, etc.)
   const vistas = sec.vistas?.length
-    ? sec.vistas.filter((v) => vistaPermitida(v, sec.permisos ?? pagina.permisos ?? [], sesion.puede))
+    ? vistasVisibles(sec, pagina.permisos ?? [])
     : null;
 
   if (vistas?.length) {
-    const paramV = Number(searchParams.get('v'));
-    const vistaIndice = Number.isInteger(paramV) && paramV >= 0 && paramV < vistas.length ? paramV : 0;
+    const vistaIndice = indiceDe(vistas, searchParams.get('v'));
     const vista = vistas[vistaIndice];
     const Tipo = TIPOS[vista.tipo || 'consulta'] || TIPOS.consulta;
 
@@ -810,7 +822,7 @@ export function MotorPagina({ pagina }) {
         <PestanasSeccion
           vistas={vistas}
           activa={vistaIndice}
-          alCambiar={(i) => setSearchParams({ sec: String(indice), v: String(i) })}
+          alCambiar={(i) => setSearchParams({ sec: claveDe(sec), v: claveDe(vistas[i]) })}
         />
         <Tipo key={`${pagina.id}-${indice}-${vistaIndice}`} sec={vista} pagina={pagina} />
       </div>

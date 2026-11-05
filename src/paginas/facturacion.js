@@ -64,7 +64,7 @@ export default {
       pestana: 'Ruta de lectura',
       // Ruta de campo: solo fontanero (el admin no registra lecturas aquí).
       permisos: [P.REGISTRAR_LECTURA],
-      excluirSi: [P.GESTIONAR_FACTURACION],
+      ocultarA: ['Administrador del Sistema'],
       ruta: '/medidores/sin-lectura',
       descripcion: 'Ruta de campo ordenada por zona y serie. Al registrar verá la lectura anterior; el consumo se calcula solo y puede generar una alerta.',
       mensajeVacio: 'Todos los medidores activos ya tienen lectura este mes. Use “Registrar lectura” si necesita cargar uno puntual.',
@@ -78,7 +78,7 @@ export default {
       // El admin usa “Historial de consumo” como sección propia.
       titulo: 'Lecturas',
       pestana: 'Lecturas',
-      excluirSi: [P.GESTIONAR_FACTURACION],
+      ocultarA: ['Administrador del Sistema'],
       descripcion: 'Registro de lecturas e historial de consumo.',
       vistas: [
         seccionFormularioLectura({

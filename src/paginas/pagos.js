@@ -560,6 +560,7 @@ export default {
           titulo: 'Simulación de suspensión',
           pestana: 'Simulación',
           tipo: 'simulacion',
+          ocultarA: ['Administrador del Sistema'],
           ruta: '/mora/suspender',
           permisos: CONSULTAR,
           descripcion: 'Ajuste los días de atraso y el saldo mínimo para ver qué conexiones se suspenderían antes de aplicar el cambio.',

@@ -10,6 +10,9 @@ const GESTIONAR = [P.GESTIONAR_MANTENIMIENTO];
 const EJECUTAR = [P.EJECUTAR_MANTENIMIENTO, P.GESTIONAR_MANTENIMIENTO];
 const REGISTRAR_INCIDENCIA = [P.REGISTRAR_INCIDENCIA, P.GESTIONAR_MANTENIMIENTO];
 
+// Lo que el Administrador del Sistema no usa (otros roles sí, p. ej. el Fontanero).
+const ADMIN = ['Administrador del Sistema'];
+
 const abierta = (f) => f.estado !== 'Resuelta';
 const resuelta = (f) => f.estado === 'Resuelta';
 const enCurso = (f) => f.estado === 'Programado' || f.estado === 'En proceso';
@@ -137,7 +140,7 @@ const CAMPOS_INCIDENCIA = [
   C.tipoIncidencia({ requerido: true }),
   { nombre: 'fecha_incidente', etiqueta: 'Fecha del incidente', tipo: 'date', valor: fechas.hoy },
   { nombre: 'ubicacion', etiqueta: 'Ubicación específica', max: 200, ayuda: 'Si se deja vacía, se tomará automáticamente la dirección de la conexión.' },
-  { nombre: 'id_alerta', etiqueta: 'Alerta de consumo relacionada (ID)', tipo: 'number', min: 1 },
+  C.alerta({ etiqueta: 'Alerta de consumo relacionada (opcional)', ancho: true }),
   { nombre: 'descripcion', etiqueta: 'Descripción detallada de la anomalía', tipo: 'textarea', requerido: true, max: 500, marcador: 'Describa fuga, presión baja, rotura o daño visible…' },
 ];
 
@@ -159,7 +162,7 @@ const ACCION_ASIGNAR_MANUAL = {
   permisos: GESTIONAR,
   ruta: (f) => `/incidencias/${f.id_incidencia}/mantenimiento`,
   campos: [
-    C.empleado({ etiqueta: 'Fontanero responsable', requerido: true, ancho: true }),
+    C.fontanero({ etiqueta: 'Fontanero responsable', requerido: true, ancho: true }),
     C.tipoTrabajo({ requerido: true }),
     { nombre: 'fecha_inicio', etiqueta: 'Fecha de inicio programada', tipo: 'date', valor: fechas.hoy },
     { nombre: 'descripcion', etiqueta: 'Instrucciones para el trabajo', tipo: 'textarea', max: 500 },
@@ -191,7 +194,7 @@ const ACCIONES_MANTENIMIENTO = [
     titulo: (f) => `Reasignar orden #${f.id_mantenimiento}`,
     ruta: (f) => `/mantenimientos/${f.id_mantenimiento}/reasignar`,
     campos: [
-      C.empleado({ nombre: 'id_nuevo_empleado', etiqueta: 'Nuevo fontanero responsable', requerido: true, ancho: true }),
+      C.fontanero({ nombre: 'id_nuevo_empleado', etiqueta: 'Nuevo fontanero responsable', requerido: true, ancho: true }),
       { nombre: 'motivo', etiqueta: 'Motivo de la reasignación', tipo: 'textarea', requerido: true, max: 300 },
     ],
     exito: () => 'Mantenimiento reasignado correctamente.',
@@ -229,8 +232,7 @@ export default {
       titulo: 'Mis mantenimientos en campo',
       pestana: 'Mi jornada',
       permisos: EJECUTAR,
-      // Solo ejecutor de campo; el admin usa la bandeja y el listado general.
-      excluirSi: [P.GESTIONAR_MANTENIMIENTO],
+      ocultarA: ADMIN,
       ruta: '/mantenimientos/mios',
       descripcion: 'Órdenes de trabajo asignadas a usted. Pase el trabajo a "En proceso" al iniciar en sitio y finalícelo al terminar la labor.',
       mensajeVacio: 'No tiene mantenimientos pendientes en este momento.',
@@ -362,7 +364,7 @@ export default {
       ocultar: ['id_empleado', 'id_conexion', 'nombre_trabajo', 'nombre_empleado', 'empleado'],
       filtros: [
         { nombre: 'estado', etiqueta: 'Estado', opciones: ESTADOS.mantenimiento },
-        C.empleado({ etiqueta: 'Fontanero asignado', permisos: GESTIONAR }),
+        C.fontanero({ etiqueta: 'Fontanero asignado', permisos: GESTIONAR }),
         { nombre: 'id_conexion', etiqueta: 'Conexión (Nº)', tipo: 'number', min: 1 },
       ],
       botones: [
@@ -374,10 +376,10 @@ export default {
           ruta: '/mantenimientos',
           campos: [
             C.conexion({ requerido: true, ancho: true }),
-            C.empleado({ etiqueta: 'Fontanero responsable', requerido: true }),
+            C.fontanero({ etiqueta: 'Fontanero responsable', requerido: true }),
             C.tipoTrabajo({ requerido: true }),
             { nombre: 'fecha_inicio', etiqueta: 'Fecha programada de inicio', tipo: 'date', valor: fechas.hoy },
-            { nombre: 'id_incidencia', etiqueta: 'Incidencia relacionada (ID opcional)', tipo: 'number', min: 1 },
+            C.incidencia({ etiqueta: 'Incidencia relacionada (opcional)', ancho: true }),
             { nombre: 'descripcion', etiqueta: 'Instrucciones del trabajo', tipo: 'textarea', max: 500 },
           ],
           textoEnviar: 'Crear orden',
@@ -386,36 +388,20 @@ export default {
         {
           texto: 'Registrar trabajo directo',
           permisos: EJECUTAR,
+          ocultarA: ADMIN,
           icono: 'check',
           ruta: '/mantenimientos/realizados',
           campos: [
             C.conexion({ requerido: true, ancho: true }),
-            C.empleado({ etiqueta: 'Fontanero responsable', permisos: GESTIONAR, ayuda: 'Si se deja vacío se asignará a usted.' }),
+            C.fontanero({ etiqueta: 'Fontanero responsable', permisos: GESTIONAR, ayuda: 'Si se deja vacío se asignará a usted.' }),
             C.tipoTrabajo({ requerido: true }),
             { nombre: 'fecha_inicio', etiqueta: 'Fecha de inicio', tipo: 'date', requerido: true, valor: fechas.hoy },
             { nombre: 'fecha_fin', etiqueta: 'Fecha de finalización', tipo: 'date', valor: fechas.hoy },
-            { nombre: 'id_incidencia', etiqueta: 'Incidencia relacionada (ID opcional)', tipo: 'number', min: 1 },
+            C.incidencia({ etiqueta: 'Incidencia relacionada (opcional)', ancho: true }),
             { nombre: 'descripcion', etiqueta: 'Detalle del trabajo ejecutado', tipo: 'textarea', requerido: true, max: 500 },
           ],
           textoEnviar: 'Guardar trabajo realizado',
           exito: (r) => `Trabajo registrado correctamente como orden finalizada #${r.salida?.id_mantenimiento}.`,
-        },
-        {
-          texto: 'Plan preventivo masivo',
-          permisos: GESTIONAR,
-          icono: 'calendario',
-          ruta: '/mantenimientos/preventivo-masivo',
-          mostrarResultado: true,
-          titulosResultado: ['Órdenes preventivas generadas'],
-          campos: [
-            C.tipoTrabajo({ requerido: true }),
-            C.empleado({ etiqueta: 'Fontanero fijo (opcional)', ayuda: 'Si se deja vacío, el sistema balanceará automáticamente la carga entre todos los fontaneros activos.' }),
-            { nombre: 'dias_sin_mantenimiento', etiqueta: 'Días mínimos sin mantenimiento', tipo: 'number', min: 1, valor: 180 },
-            { nombre: 'fecha_inicio', etiqueta: 'Fecha programada', tipo: 'date', valor: fechas.hoy },
-            { nombre: 'descripcion', etiqueta: 'Descripción de la campaña', max: 100, valor: 'Inspección periódica y mantenimiento preventivo' },
-          ],
-          textoEnviar: 'Generar plan preventivo',
-          exito: (r) => `Se han generado ${r.salida?.cantidad_programados ?? 0} órdenes de mantenimiento preventivo.`,
         },
       ],
       acciones: ACCIONES_MANTENIMIENTO,

@@ -1,5 +1,5 @@
 // Definición compartida del flujo de lecturas (R2 / CU-3.x).
-// La usan facturacion.js (oficina) y campo.js (fontanero) para no divergir.
+// La usan facturacion.js (oficina) y la jornada del fontanero en mantenimiento.
 import { C, ESTADOS, fechas } from './comunes.js';
 import { numero } from '../ui/formato.js';
 

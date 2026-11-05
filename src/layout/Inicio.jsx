@@ -5,6 +5,7 @@ import { useSesion } from '../contexto/Sesion.jsx';
 import { seccionesVisibles } from '../motor/MotorPagina.jsx';
 import { PAGINAS } from '../paginas/index.js';
 import { P } from '../permisos.js';
+import { ruta } from '../roles.js';
 import { moneda, numero } from '../ui/formato.js';
 import { GraficoColumnas, GraficoDonut } from '../ui/Grafico.jsx';
 import { Icono } from '../ui/Icono.jsx';
@@ -285,7 +286,7 @@ export function Inicio() {
       icono: 'pago',
       variante: 'destacado',
       tendencia,
-      destino: '/pagos?sec=2',
+      destino: ruta('pagos', 'Pagos'),
     });
   }
   if (verPagos || verFacturas) {
@@ -297,7 +298,7 @@ export function Inicio() {
       tono: 'cielo',
       icono: 'factura',
       variante: 'borde',
-      destino: '/pagos?sec=1',
+      destino: ruta('pagos', 'Facturas'),
     });
   }
   if (verPagos) {
@@ -308,7 +309,7 @@ export function Inicio() {
       detalle: 'De la cartera sigue sin pagar',
       tono: 'ambar',
       icono: 'reloj',
-      destino: '/pagos?sec=3',
+      destino: ruta('pagos', 'Morosidad'),
     });
   }
   if (verAbonados) {
@@ -332,7 +333,7 @@ export function Inicio() {
       icono: 'alerta',
       variante: 'alerta',
       enlace: 'Ver detalle',
-      destino: '/mantenimiento?sec=1',
+      destino: ruta('mantenimiento', 'Incidencias'),
     });
   }
 
@@ -342,7 +343,7 @@ export function Inicio() {
       nivel: 'alta',
       texto: `${altas} incidencia${altas === 1 ? '' : 's'} de prioridad alta abierta${altas === 1 ? '' : 's'}`,
       accion: 'Atender',
-      destino: '/mantenimiento?sec=1',
+      destino: ruta('mantenimiento', 'Incidencias'),
     });
   }
   if (pendientes.length > 0) {
@@ -350,7 +351,7 @@ export function Inicio() {
       nivel: 'media',
       texto: `${pendientes.length} facturas pendientes de cobro`,
       accion: 'Revisar',
-      destino: '/pagos?sec=1',
+      destino: ruta('pagos', 'Facturas'),
     });
   }
   if (morosos > 0) {
@@ -358,7 +359,7 @@ export function Inicio() {
       nivel: 'media',
       texto: `${morosos} conexiones en morosidad`,
       accion: 'Revisar',
-      destino: '/pagos?sec=3',
+      destino: ruta('pagos', 'Morosidad'),
     });
   }
   if (mantenimientosPendientes > 0) {
@@ -366,7 +367,7 @@ export function Inicio() {
       nivel: 'baja',
       texto: `${mantenimientosPendientes} órdenes de mantenimiento pendientes`,
       accion: 'Ver',
-      destino: '/mantenimiento?sec=2',
+      destino: ruta('mantenimiento', 'Mantenimientos'),
     });
   }
 
@@ -470,7 +471,7 @@ export function Inicio() {
           <section className="dash-card dash-atencion">
             <div className="dash-card-cabecera dash-cabecera-compacta">
               <h2>Requiere atención</h2>
-              <Link className="enlace-sutil" to="/mantenimiento?sec=1">Ver todo</Link>
+              <Link className="enlace-sutil" to={ruta('mantenimiento', 'Incidencias')}>Ver todo</Link>
             </div>
 
             <div className="atencion-lista">

@@ -9,23 +9,48 @@ import { Input } from '../components/ui/Input.jsx';
 import { Icono } from './Icono.jsx';
 
 function iconoAccion(accion) {
-  if (accion.icono) return accion.icono;
+  if (accion.icono && accion.icono !== 'accion' && accion.icono !== 'puntos') return accion.icono;
   const t = String(accion.texto || '').toLowerCase();
   if (/auto-?asignar|asignar/.test(t)) return 'usuarios';
   if (/prioridad|alerta/.test(t)) return 'alerta';
-  if (/estado|editar/.test(t)) return 'editar';
-  if (/cerrar|finalizar/.test(t)) return 'check';
+  if (/modificar|editar|corregir|estado/.test(t)) return 'editar';
+  if (/cerrar|finalizar|resolver/.test(t)) return 'check';
   if (/reabrir|reactivar|recargar/.test(t)) return 'recargar';
-  if (/historial|ver|detalle/.test(t)) return 'lista';
-  if (/anular|eliminar|suspender/.test(t)) return 'peligro';
+  if (/historial/.test(t)) return 'historial';
+  if (/ver|detalle/.test(t)) return 'ojo';
+  if (/desactivar|suspender|baja/.test(t)) return 'desactivar';
+  if (/anular|eliminar/.test(t)) return 'peligro';
   if (/pago|registrar pago/.test(t)) return 'pago';
   if (/pr[oó]rroga|recargo/.test(t)) return 'factura';
-  return 'accion';
+  if (/registrar|crear|nuevo|agregar|reporte/.test(t)) return 'registrar';
+  return null;
 }
 
 function esAccionPeligro(accion) {
-  return Boolean(accion.peligro || /eliminar|desactivar|baja|anular|cerrar|suspender/i.test(accion.texto || ''));
+  return Boolean(accion.peligro || /eliminar|desactivar|baja|anular|suspender/i.test(accion.texto || ''));
 }
+
+function tipoClaseAccion(accion) {
+  if (esAccionPeligro(accion)) return 'peligro';
+  const t = String(accion.texto || '').toLowerCase();
+  if (/historial|ver|detalle/.test(t)) return 'historial';
+  if (/modificar|editar|corregir/.test(t)) return 'editar';
+  if (/cerrar|finalizar|resolver|check/.test(t)) return 'exito';
+  if (/asignar|auto-asignar/.test(t)) return 'primario';
+  if (/registrar|crear|agregar/.test(t)) return 'registrar';
+  return 'normal';
+}
+
+const PRIORIDADES_ACCION = {
+  historial: 1,
+  ver: 2,
+  registrar: 5,
+  normal: 10,
+  editar: 20,
+  exito: 30,
+  primario: 40,
+  peligro: 90,
+};
 
 function MenuAccionesFila({ acciones, fila, alAccion }) {
   const [abierto, setAbierto] = useState(false);
@@ -46,29 +71,37 @@ function MenuAccionesFila({ acciones, fila, alAccion }) {
   useEffect(() => {
     if (!abierto) return undefined;
     posicionar();
-    const cerrar = (e) => {
+    const alClicFuera = (e) => {
       if (ref.current && !ref.current.contains(e.target)) setAbierto(false);
     };
-    const tecla = (e) => {
+    const alEscape = (e) => {
       if (e.key === 'Escape') setAbierto(false);
     };
     const reposicionar = () => posicionar();
-    document.addEventListener('mousedown', cerrar);
-    document.addEventListener('keydown', tecla);
+
+    document.addEventListener('mousedown', alClicFuera);
+    document.addEventListener('keydown', alEscape);
     window.addEventListener('resize', reposicionar);
     window.addEventListener('scroll', reposicionar, true);
     return () => {
-      document.removeEventListener('mousedown', cerrar);
-      document.removeEventListener('keydown', tecla);
+      document.removeEventListener('mousedown', alClicFuera);
+      document.removeEventListener('keydown', alEscape);
       window.removeEventListener('resize', reposicionar);
       window.removeEventListener('scroll', reposicionar, true);
     };
   }, [abierto]);
 
-  if (!visibles.length) return null;
+  if (!visibles.length) return <span className="text-[var(--texto-suave)] text-xs">—</span>;
+
+  // Orden consistente: 1. Historial / Ver  ->  2. Registrar / Modificar  ->  3. Desactivar / Peligro
+  const ordenadas = [...visibles].sort((a, b) => {
+    const tipoA = tipoClaseAccion(a);
+    const tipoB = tipoClaseAccion(b);
+    return (PRIORIDADES_ACCION[tipoA] ?? 50) - (PRIORIDADES_ACCION[tipoB] ?? 50);
+  });
 
   return (
-    <div className={`menu-acciones-fila${abierto ? ' abierto' : ''}`} ref={ref}>
+    <div className={`menu-acciones-fila relative inline-flex items-center justify-center${abierto ? ' abierto' : ''}`} ref={ref}>
       <button
         ref={botonRef}
         type="button"
@@ -84,27 +117,32 @@ function MenuAccionesFila({ acciones, fila, alAccion }) {
         <span>Acciones</span>
         <Icono nombre="abajo" tamano={12} className={`icono-flecha-menu ${abierto ? 'rotado' : ''}`} />
       </button>
+
       {abierto ? (
         <div
           className="menu-acciones-lista"
           role="menu"
           style={{ top: coords.top, right: coords.right }}
         >
-          {visibles.map((a) => (
-            <button
-              key={a.texto}
-              type="button"
-              role="menuitem"
-              className={`menu-acciones-item${esAccionPeligro(a) ? ' peligro' : ''}`}
-              onClick={() => {
-                setAbierto(false);
-                alAccion?.(a, fila);
-              }}
-            >
-              <Icono nombre={iconoAccion(a)} tamano={14} />
-              <span>{a.texto}</span>
-            </button>
-          ))}
+          {ordenadas.map((a) => {
+            const iconName = iconoAccion(a);
+            const esPeligro = esAccionPeligro(a);
+            return (
+              <button
+                key={a.texto}
+                type="button"
+                role="menuitem"
+                className={`menu-acciones-item${esPeligro ? ' peligro' : ''}`}
+                onClick={() => {
+                  setAbierto(false);
+                  alAccion?.(a, fila);
+                }}
+              >
+                {iconName ? <Icono nombre={iconName} tamano={14} className="shrink-0" /> : null}
+                <span>{a.texto}</span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
     </div>
@@ -347,7 +385,7 @@ export function Tabla({
 
       {/* Contenedor de la Tabla */}
       <div className="tabla-envoltura rounded-xl border border-[var(--borde)] bg-[var(--superficie)] shadow-2xs">
-        <table className="w-full text-left text-sm border-collapse">
+        <table className="w-full text-center text-sm border-collapse">
           <thead>
             <tr className="border-b border-[var(--borde)] bg-[var(--superficie-2)]/60 text-[var(--texto-suave)] font-semibold text-xs uppercase tracking-wider">
               {cols.map((c) => {
@@ -357,10 +395,10 @@ export function Tabla({
                   <th
                     key={c.campo}
                     onClick={() => ordenar(c.campo)}
-                    className={`py-3 px-3 cursor-pointer hover:text-[var(--acento)] select-none transition-colors ${centrada ? 'text-center col-cantidad' : 'text-left'}`}
+                    className="py-3 px-3 cursor-pointer hover:text-[var(--acento)] select-none transition-colors text-center"
                     title="Ordenar por esta columna"
                   >
-                    <div className={`inline-flex items-center gap-1.5 ${centrada ? 'justify-center w-full' : ''}`}>
+                    <div className="inline-flex items-center justify-center gap-1.5 w-full">
                       <span>{c.etiqueta}</span>
                       {activo ? (
                         <span className="text-sky-400">{orden.asc ? '▲' : '▼'}</span>
@@ -370,7 +408,7 @@ export function Tabla({
                 );
               })}
               {acciones.length ? (
-                <th className="th-acciones py-3 px-3 font-semibold text-xs tracking-wider uppercase">
+                <th className="th-acciones py-3 px-3 font-semibold text-xs tracking-wider uppercase text-center">
                   Acciones
                 </th>
               ) : null}
@@ -414,11 +452,9 @@ export function Tabla({
                       );
                     }
 
-                    const centrada = esColumnaCentrada(c.campo, c.etiqueta);
                     const { contenido, clase } = formatearCelda(c.campo, fila[c.campo]);
-                    const claseFinal = centrada ? `${clase || ''} text-center col-cantidad`.trim() : (clase || '');
                     return (
-                      <td key={c.campo} className={`tabla-td ${claseFinal}`}>
+                      <td key={c.campo} className={`tabla-td text-center ${clase || ''}`}>
                         {contenido}
                       </td>
                     );

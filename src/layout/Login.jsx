@@ -27,7 +27,7 @@ export function Login({ mensaje }) {
     else localStorage.removeItem(CLAVE_USUARIO);
 
     guardar({ token: r.token, usuario: r.usuario });
-    window.location.hash = '#/inicio';
+    window.location.hash = '#/'; // App decide la entrada según el rol
   }
 
   function abrirRecuperar() {

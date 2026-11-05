@@ -1,7 +1,19 @@
 // R1 · Abonados, conexiones y medidores (CU-2.x).
 import { P } from '../permisos.js';
 import { numero } from '../ui/formato.js';
+import { obtener } from '../api.js';
 import { C, ESTADOS, TIPO_ABONADO } from './comunes.js';
+
+// Serie del medidor nuevo: la siguiente a la mayor SC-nnnnn registrada.
+// El índice único de Medidor.numero_serie evita duplicados si dos la piden a la vez.
+async function siguienteSerie() {
+  const r = await obtener('/medidores');
+  const mayor = (r.datos || []).reduce((m, f) => {
+    const n = /^SC-(\d+)$/i.exec(String(f.numero_serie || '').trim());
+    return n ? Math.max(m, Number(n[1])) : m;
+  }, 0);
+  return `SC-${mayor + 1}`;
+}
 
 const CONSULTAR = [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS];
 const GESTIONAR = [P.GESTIONAR_ABONADOS];
@@ -143,12 +155,13 @@ export const ACCIONES_CONEXION = [
     ruta: (f) => `/conexiones/${f.id_conexion}/medidor`,
     visible: (f) => !f.estado || f.estado === 'Activa',
     campos: (f) => [
-      { nombre: 'numero_serie', etiqueta: 'Número de serie', requerido: true, max: 50 },
+      { tipo: 'info', nombre: '_serie', etiqueta: 'Número de serie', texto: 'Se asigna automáticamente al guardar (SC-…).' },
       { nombre: 'lectura_inicial', etiqueta: 'Lectura inicial (m³)', tipo: 'number', min: 0, valor: 0 },
       ...(f.id_medidor
         ? [{ nombre: 'sustituir', etiqueta: `Sustituir el medidor actual (${f.numero_serie})`, tipo: 'checkbox', valor: true }]
         : []),
     ],
+    cuerpo: async () => ({ numero_serie: await siguienteSerie() }),
     exito: (r) => `Medidor asignado (ID ${r.salida?.id_medidor}).`,
   },
   {
@@ -166,6 +179,7 @@ export const ACCIONES_CONEXION = [
 export default {
   id: 'abonados',
   titulo: 'Abonados y conexiones',
+  ocultarA: ['Fontanero'],
   icono: 'usuarios',
   permisos: VER_MEDIDORES,
   secciones: [
@@ -212,7 +226,7 @@ export default {
           icono: 'factura',
           ejecutar: (f) => {
             const tipo = f.tipo_abonado || (/jur/i.test(f.tipo || '') ? 'JURIDICO' : 'FISICO');
-            window.location.hash = `#/pagos?sec=1&v=1&abonado_ref=${encodeURIComponent(`${tipo}|${f.id_abonado}`)}`;
+            window.location.hash = `#/pagos?sec=facturas&v=estado-de-cuenta&abonado_ref=${encodeURIComponent(`${tipo}|${f.id_abonado}`)}`;
           },
         },
         {

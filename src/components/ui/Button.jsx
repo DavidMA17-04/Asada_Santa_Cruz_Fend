@@ -20,7 +20,7 @@ export function Button({
 
   switch (variant) {
     case 'refresh':
-      estiloVariante = 'rounded-full border border-sky-400/40 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:border-sky-400/60 shadow-xs px-4 py-2 text-sm';
+      estiloVariante = 'rounded-full border border-sky-400/50 bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300 hover:border-sky-400/70 shadow-xs px-4 py-2 text-sm hover:-translate-y-0.5 transition-all duration-200';
       iconoAuto = iconoAuto || 'recargar';
       tamanoIcono = 14;
       break;
@@ -58,7 +58,7 @@ export function Button({
 
     case 'primary':
     default:
-      estiloVariante = 'rounded-xl bg-[#0C3B5E] text-white hover:bg-[#1A5B8C] border border-[#0C3B5E]/20 shadow-xs px-4 py-2 text-sm';
+      estiloVariante = 'rounded-xl bg-gradient-to-r from-sky-600 via-sky-500 to-cyan-500 hover:from-sky-500 hover:via-sky-400 hover:to-cyan-400 text-white font-semibold shadow-sm shadow-sky-500/25 hover:shadow-md hover:shadow-sky-500/35 border border-sky-400/40 px-4 py-2 text-sm hover:-translate-y-0.5 transition-all duration-200 active:translate-y-0 active:scale-[0.98]';
       tamanoIcono = 15;
       break;
   }
