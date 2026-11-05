@@ -272,7 +272,7 @@ export default {
         ruta: (f) => `/medidores/${f.id_medidor}/desactivar`,
         campos: [
           { nombre: 'nuevo_estado', etiqueta: 'Nuevo estado', requerido: true, opciones: ESTADOS.medidor.filter((e) => e !== 'Activo') },
-          { nombre: 'motivo', etiqueta: 'Motivo', tipo: 'textarea', max: 250 },
+          { nombre: 'motivo', etiqueta: 'Motivo obligatorio de la baja', tipo: 'textarea', requerido: true, max: 250 },
         ],
         exito: () => 'Medidor dado de baja.',
       }],

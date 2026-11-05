@@ -14,7 +14,11 @@ export function TableroDiagnosticoSLA({ r = {}, def = {}, recargar }) {
   const [pestanaActiva, setPestanaActiva] = useState(0);
 
   const datosSla = conjuntos[0] || [];
-  const datosEmpleados = conjuntos[1] || [];
+  const datosEmpleados = (conjuntos[1] || []).filter((row) => {
+    const p = String(row.puesto || '').toLowerCase();
+    const nom = String(row.fontanero || row.empleado || row.nombre || row.nombre_empleado || '').toLowerCase();
+    return !/junta|admin|dba/i.test(p) && !/junta|admin|dba/i.test(nom);
+  });
   const datosConexiones = conjuntos[2] || [];
 
   // Calcular métricas clave consolidadas
@@ -69,7 +73,7 @@ export function TableroDiagnosticoSLA({ r = {}, def = {}, recargar }) {
       <div className="flex border-b border-[var(--borde)] gap-2">
         {nombresConjuntos.map((nombre, idx) => {
           const activa = pestanaActiva === idx;
-          const cantidad = (conjuntos[idx] || []).length;
+          const cantidad = idx === 1 ? datosEmpleados.length : (conjuntos[idx] || []).length;
           return (
             <button
               key={idx}
@@ -91,9 +95,9 @@ export function TableroDiagnosticoSLA({ r = {}, def = {}, recargar }) {
 
       {/* Contenido de la Pestaña Activa */}
       <div className="pt-2">
-        {conjuntos[pestanaActiva]?.length ? (
+        {(pestanaActiva === 1 ? datosEmpleados : conjuntos[pestanaActiva])?.length ? (
           <Tabla
-            filas={conjuntos[pestanaActiva]}
+            filas={pestanaActiva === 1 ? datosEmpleados : conjuntos[pestanaActiva]}
             nombreArchivo={`sla-${pestanaActiva + 1}`}
           />
         ) : (
