@@ -20,9 +20,7 @@ import {
 
 const CONSULTAR = [P.CONSULTAR_FACTURAS, P.GESTIONAR_FACTURACION];
 const GESTIONAR = [P.GESTIONAR_FACTURACION];
-const LECTURA = [P.REGISTRAR_LECTURA, P.GESTIONAR_FACTURACION];
 const VER_FACTURAS = [...CONSULTAR, P.CONSULTAR_PAGOS, P.GESTIONAR_PAGOS];
-const VER_MEDIDORES = [P.CONSULTAR_ABONADOS, P.GESTIONAR_ABONADOS, P.REGISTRAR_LECTURA, P.REGISTRAR_INCIDENCIA, P.CONSULTAR_FACTURAS];
 
 /** Estado visible: usa el de la API o lo deduce por saldo / vencimiento. */
 function enriquecerFacturas(filas = []) {
@@ -64,32 +62,49 @@ export default {
     {
       titulo: 'Medidores sin lectura este mes',
       pestana: 'Ruta de lectura',
-      permisos: [...VER_MEDIDORES, P.GESTIONAR_FACTURACION],
+      // Ruta de campo: solo fontanero (el admin no registra lecturas aquí).
+      permisos: [P.REGISTRAR_LECTURA],
+      ocultarA: ['Administrador del Sistema'],
       ruta: '/medidores/sin-lectura',
       descripcion: 'Ruta de campo ordenada por zona y serie. Al registrar verá la lectura anterior; el consumo se calcula solo y puede generar una alerta.',
       mensajeVacio: 'Todos los medidores activos ya tienen lectura este mes. Use “Registrar lectura” si necesita cargar uno puntual.',
       transformar: ordenarRutaLectura,
       metricas: metricasRutaLectura,
       columnas: COLUMNAS_RUTA_LECTURA,
-      acciones: [accionRegistrarLectura({ permisos: LECTURA })],
+      acciones: [accionRegistrarLectura({ permisos: [P.REGISTRAR_LECTURA] })],
     },
     {
+      // Grupo “Lecturas” (registrar + historial anidado): solo fontanero.
+      // El admin usa “Historial de consumo” como sección propia.
       titulo: 'Lecturas',
       pestana: 'Lecturas',
       ocultarA: ['Administrador del Sistema'],
-      descripcion: 'Registro de lecturas, correcciones e historial de consumo.',
+      descripcion: 'Registro de lecturas e historial de consumo.',
       vistas: [
         seccionFormularioLectura({
-          permisos: LECTURA,
+          permisos: [P.REGISTRAR_LECTURA],
           pestana: 'Registrar lectura',
           descripcion: 'Elija el medidor: verá la lectura anterior o inicial antes de guardar.',
         }),
         {
           titulo: 'Historial de consumo',
           pestana: 'Historial',
+          permisos: CONSULTAR,
+          ruta: '/lecturas/historial',
+          descripcion: 'Consumo por lectura y estado de la factura asociada.',
+          filtros: FILTROS_HISTORIAL_LECTURAS,
+          prepararFiltros: prepararFiltrosHistorial,
+          transformar: enriquecerHistorialLecturas,
+          columnas: COLUMNAS_HISTORIAL_LECTURAS,
+        },
+      ],
+    },
+    {
+      titulo: 'Historial de consumo',
+      pestana: 'Historial',
       permisos: CONSULTAR,
       ruta: '/lecturas/historial',
-      descripcion: 'Consumo por lectura y estado de la factura asociada.',
+      descripcion: 'Consumo por lectura y estado de la factura asociada. Corrija o facture desde aquí.',
       filtros: FILTROS_HISTORIAL_LECTURAS,
       prepararFiltros: prepararFiltrosHistorial,
       transformar: enriquecerHistorialLecturas,
@@ -142,8 +157,6 @@ export default {
           ruta: (f) => `/alertas/detectar/${f.id_lectura}`,
           confirmar: (f) => `¿Evaluar el consumo de la lectura ${f.id_lectura} contra las reglas de alerta?`,
           exito: (r) => (r.salida?.id_alerta ? `Se generó la alerta ${r.salida.id_alerta}.` : 'La lectura no presenta consumo anómalo.'),
-        },
-      ],
         },
       ],
     },
@@ -261,7 +274,7 @@ export default {
             texto: f.observacion || 'Sin observaciones todavía.',
           },
           { nombre: 'estado', etiqueta: 'Estado', requerido: true, opciones: ESTADOS.alerta },
-          C.incidencia({ etiqueta: 'Incidencia relacionada (opcional)', ancho: true }),
+          { nombre: 'id_incidencia', etiqueta: 'Incidencia relacionada (opcional)', tipo: 'number', min: 1 },
           { nombre: 'observacion', etiqueta: 'Nueva observación', tipo: 'textarea', max: 250, ancho: true, marcador: 'Opcional' },
         ],
         inicial: () => ({ estado: 'Resuelta' }),

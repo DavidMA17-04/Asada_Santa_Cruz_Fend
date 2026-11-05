@@ -1,5 +1,5 @@
 // Definición compartida del flujo de lecturas (R2 / CU-3.x).
-// La usan facturacion.js (oficina) y campo.js (fontanero) para no divergir.
+// La usan facturacion.js (oficina) y la jornada del fontanero en mantenimiento.
 import { C, ESTADOS, fechas } from './comunes.js';
 import { numero } from '../ui/formato.js';
 
@@ -130,12 +130,13 @@ export function campoMedidorParaLectura(extra = {}) {
 }
 
 /** Formulario libre: elegir medidor + registrar. */
-export function seccionFormularioLectura({ permisos, pestana, titulo, descripcion }) {
+export function seccionFormularioLectura({ permisos, pestana, titulo, descripcion, excluirSi }) {
   return {
     titulo: titulo || 'Registrar lectura',
     pestana,
     tipo: 'formulario',
     permisos,
+    excluirSi,
     ruta: '/lecturas',
     descripcion,
     campos: [campoMedidorParaLectura({ requerido: true, ancho: true }), ...camposRegistroLectura()],

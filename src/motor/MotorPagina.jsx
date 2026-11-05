@@ -815,7 +815,7 @@ export function MotorPagina({ pagina }) {
   if (vistas?.length) {
     const vistaIndice = indiceDe(vistas, searchParams.get('v'));
     const vista = vistas[vistaIndice];
-    const Tipo = TIPOS[vista.tipo || 'consulta'];
+    const Tipo = TIPOS[vista.tipo || 'consulta'] || TIPOS.consulta;
 
     return (
       <div className="seccion-con-vistas">
@@ -829,6 +829,6 @@ export function MotorPagina({ pagina }) {
     );
   }
 
-  const Tipo = TIPOS[sec.tipo || 'consulta'];
+  const Tipo = TIPOS[sec.tipo || 'consulta'] || TIPOS.consulta;
   return <Tipo key={`${pagina.id}-${indice}`} sec={sec} pagina={pagina} />;
 }
